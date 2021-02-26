@@ -1,0 +1,11 @@
+{
+	"name": "com.unity.2d.custom",
+	"displayName":"2D Cloth",
+	"version": "1.0.0",
+    "unity": "2019.4",
+    "keywords": ["2d", "cloth", "sprite", "wind"],
+    "category": "2D",
+	"description": "The cloth package for 2D",
+    "dependencies": {
+    }
+}
