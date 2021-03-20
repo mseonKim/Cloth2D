@@ -28,7 +28,6 @@ namespace Cloth2D
     {
         public Sprite sprite;
         public bool reverseTexture;
-        public bool ignoreCollision;
         [Range(2, 16)] public int resolution = 2;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float weight = 1f;
@@ -179,11 +178,7 @@ namespace Cloth2D
                 {
                     ApplyGravity(node.index, dt);
                     ApplyWinds(node.index, dt);
-                    if (!ignoreCollision)
-                    {
-                        // ApplyCollision(i, dt);
-                    }
-                    // ApplyTensions(node, dt);
+                    // ApplyCollision(i, dt);
                     ApplyForces(node.index, dt);
 
                     AdjustSegmentLength(node, dt);
@@ -238,37 +233,6 @@ namespace Cloth2D
                 if (wetness < 0f)
                     wetness = 0f;
             }
-        }
-
-        private void ApplyTensions(ClothNode node, float dt)
-        {
-            Vector3 tension = Vector3.zero;
-            List<int> adjacentIndices = GetAdjacentVertexIndices(node.index);
-            float max = 0.5f * (1f - 0.5f * stiffness);
-            
-            foreach (var adj in adjacentIndices)
-            {
-                Vector3 dist = _vertices[adj].pos - _vertices[node.index].pos;
-                if (Mathf.Abs(node.index - adj) == 1)
-                {
-                    if (dist.magnitude > _maxSegmentWidthLength)
-                        tension += dist;
-                }
-                else
-                {
-                    if (dist.magnitude > _maxSegmentHeightLength)
-                        tension += dist;
-                }
-            }
-            tension /= adjacentIndices.Count;
-
-            if (tension.magnitude > max)
-            {
-                tension.Normalize();
-                tension *= max;
-            }
-
-             _vertices[node.index].vel += tension;
         }
 
         private void ApplyForces(int i, float dt)
@@ -429,7 +393,7 @@ namespace Cloth2D
         {
             List<int> indices = new List<int>(4);
 
-            // Vertical Anchors
+            // For Vertical Anchors
             if (anchors.Count == 2 && anchors[0] % resolution == anchors[1] % resolution)
             {
                 if (i % resolution > 0)
@@ -448,7 +412,7 @@ namespace Cloth2D
                 if (anchors[0] == resolution - 1)
                     indices.Reverse();
             }
-            // Horizontal & Etc.
+            // For Horizontal & Etc.
             else
             {
                 if (i / resolution > 0)
@@ -470,26 +434,6 @@ namespace Cloth2D
             
             return indices;
         }
-
-        private List<int> GetAdjacentVertexIndices(int i, bool horizontal)
-        {
-            List<int> indices = new List<int>(3);
-            
-            if (i / resolution > 0)
-                indices.Add(i - resolution);
-
-            if (horizontal && i % resolution > 0)
-                indices.Add(i - 1);
-
-            if (horizontal && i % resolution < resolution - 1)
-                indices.Add(i + 1);
-
-            if (!horizontal && i / resolution < resolution - 1)
-                indices.Add(i + resolution);
-
-            return indices;
-        }
-
 
         private Vector3 GetBezierCurvePoint(float u, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
         {
