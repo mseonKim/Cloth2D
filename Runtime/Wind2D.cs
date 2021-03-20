@@ -5,12 +5,12 @@ namespace Cloth2D
 {
     public class Wind2D : MonoBehaviour
     {
-        [Range(-1f, 1f)] public float wind = 0.3f; // Vanila wind
+        [Range(0f, 1f)] public float wind = 0.3f; // Vanila wind
         [Tooltip("Apply attenuation by distance.")]
         public bool attenuation;
         [Tooltip("How far the wind could reach.")]
         [Range(0f, 1000f)] public float maxDistance = 100f;
-        [Range(0f, 1f)] public float turbulence = 0.1f;
+        [Range(0f, 1f)] public float turbulence = 0.01f;
 
         public Vector3 windDriection { get {
             float rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
@@ -28,13 +28,14 @@ namespace Cloth2D
             if (!attenuation)
                 return wind;
             
-            return Mathf.Max(0f, wind * (1 - Mathf.Pow(dist / maxDistance, 2f)));
+            return Mathf.Max(0f, wind * (1 - dist / maxDistance));
         }
 
         private void OnDrawGizmosSelected()
         {
             int number = 5;
             Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
+            Gizmos.DrawSphere(transform.position, 0.25f);
 
             for (int i = 0; i < number; i++)
             {
