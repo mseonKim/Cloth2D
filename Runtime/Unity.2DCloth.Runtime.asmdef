@@ -1,5 +1,5 @@
 {
-    "name": "Unity.2D.Cloth.Runtime",
+    "name": "Unity.2D.Cloth",
     "references": [],
     "optionalUnityReferences": [],
     "includePlatforms": [],

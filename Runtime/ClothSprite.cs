@@ -23,16 +23,16 @@ namespace Cloth2D
         }
     }
 
-    [ExecuteInEditMode]
+    [ExecuteAlways]
     public class ClothSprite : MonoBehaviour
     {
         public Sprite sprite;
         public bool reverseTexture;
-        [Range(2, 16)] public int resolution = 2;
+        [Range(4, 16)] public int resolution = 12;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float weight = 1f;
-        [Range(0f, 1f)] public float stiffness = 0f;
-        [Range(1f, 2f)] public float flexibleScale = 1.5f;
+        [Range(0f, 1f)] public float stiffness = 0.5f;
+        [Range(1f, 2f)] public float flexibleScale = 1.2f;
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
         public List<int> anchors = new List<int>();
@@ -99,11 +99,15 @@ namespace Cloth2D
             if (resolution == _preResolution || sprite == null)
                 return;
 
-            _preResolution = resolution;
-            
             // Set values
+            _preResolution = resolution;
+
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
+
+            if (_material == null)
+                return;
+
             _material.mainTexture = sprite.texture;
 
             _mesh = new Mesh();
@@ -219,13 +223,13 @@ namespace Cloth2D
 
         private void ApplyWinds(int i, float dt)
         {
-            float wind =  wind2d.GetAttenuatedWind(transform.position);
+            float wind =  wind2d.GetWind(transform.position);
             float wet = wetness * 0.25f;
             
             _vertices[i].vel.x += Mathf.Pow(wind / (weight + wet), 1.5f) * wind2d.windDriection.x * _segmentWidth;
             _vertices[i].vel.y += Mathf.Pow(wind / (weight + wet), 1.5f) * wind2d.windDriection.y * _segmentHeight;
-            _vertices[i].vel.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 0.1f;
-            _vertices[i].vel.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 0.1f;
+            _vertices[i].vel.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 0.5f;
+            _vertices[i].vel.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 0.5f;
             
             if (wetness > 0f)
             {
@@ -259,8 +263,8 @@ namespace Cloth2D
                 Vector3 p2 = new Vector3(_width * 2f / 3f, bezierY, 0f);
                 if (wind2d != null)
                 {
-                    p1.x += wind2d.windDriection.x * wind2d.GetAttenuatedWind(transform.position) * _width / 2f;
-                    p2.x += wind2d.windDriection.x * wind2d.GetAttenuatedWind(transform.position) * _width / 2f;
+                    p1.x += wind2d.windDriection.x * wind2d.GetWind(transform.position) * _width / 2f;
+                    p2.x += wind2d.windDriection.x * wind2d.GetWind(transform.position) * _width / 2f;
                 }
 
                 // Adjust pos by bezier point
@@ -295,8 +299,8 @@ namespace Cloth2D
                 Vector3 p2 = new Vector3(bezierX, -_height * 2f / 3f, 0f);
                 if (wind2d != null)
                 {
-                    p1.y += wind2d.windDriection.y * wind2d.GetAttenuatedWind(transform.position) * _height / 2f;
-                    p2.y += wind2d.windDriection.y * wind2d.GetAttenuatedWind(transform.position) * _height / 2f;
+                    p1.y += wind2d.windDriection.y * wind2d.GetWind(transform.position) * _height / 2f;
+                    p2.y += wind2d.windDriection.y * wind2d.GetWind(transform.position) * _height / 2f;
                 }
 
                 // Adjust pos by bezier point
@@ -409,7 +413,7 @@ namespace Cloth2D
                     indices.Add(i + 1);
 
                 // Reverse if the anchor is right
-                if (anchors[0] == resolution - 1)
+                if (anchors.Count > 0 && anchors[0] == resolution - 1)
                     indices.Reverse();
             }
             // For Horizontal & Etc.
@@ -428,7 +432,7 @@ namespace Cloth2D
                     indices.Add(i + resolution);
 
                 // Reverse if the anchor is down
-                if (anchors[0] / resolution == resolution - 1)
+                if (anchors.Count > 0 && anchors[0] / resolution == resolution - 1)
                     indices.Reverse();
             }
             

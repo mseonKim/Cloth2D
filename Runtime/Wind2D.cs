@@ -5,12 +5,14 @@ namespace Cloth2D
 {
     public class Wind2D : MonoBehaviour
     {
-        [Range(0f, 1f)] public float wind = 0.3f; // Vanila wind
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float wind = 0.3f; // Vanila wind
         [Tooltip("Apply attenuation by distance.")]
         public bool attenuation;
         [Tooltip("How far the wind could reach.")]
-        [Range(0f, 1000f)] public float maxDistance = 100f;
-        [Range(0f, 1f)] public float turbulence = 0.01f;
+        [Range(0f, 10000f)] public float maxDistance = 1000f;
+        [Range(0f, 1f)] public float turbulence = 0.1f;
 
         public Vector3 windDriection { get {
             float rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
@@ -18,13 +20,13 @@ namespace Cloth2D
         }}
 
 
-        public float GetAttenuatedWind(Vector3 pos)
+        public float GetWind(Vector3 pos)
         {
             float dist = (transform.position - pos).magnitude;
-
+            
             if (dist > maxDistance)
                 return 0f;
-                
+
             if (!attenuation)
                 return wind;
             
