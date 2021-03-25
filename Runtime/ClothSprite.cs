@@ -42,6 +42,7 @@ namespace Cloth2D
         private MeshFilter _meshFilter;
         private Mesh _mesh;
         private Material _material;
+        private PolygonCollider2D _collider;
 
         private Vertex[] _vertices;
         private List<ClothNode> _orderedNodes;
@@ -53,6 +54,7 @@ namespace Cloth2D
         private float _maxSegmentWidthLength;
         private float _maxSegmentHeightLength;
         private int _preResolution;
+        private int[] _colliderPoints;
 
 
         void Awake()
@@ -72,6 +74,7 @@ namespace Cloth2D
         void Update()
         {
             GenerateMesh();
+            UpdateCollider();
             UpdateCloth(Time.deltaTime);
         }
 
@@ -81,8 +84,9 @@ namespace Cloth2D
             if (sprite == null)
                 return;
 
-            _width = sprite.texture.width / sprite.pixelsPerUnit * transform.lossyScale.x;
-            _height = sprite.texture.height / sprite.pixelsPerUnit * transform.lossyScale.y;
+            _width = sprite.texture.width / sprite.pixelsPerUnit;
+            _height = sprite.texture.height / sprite.pixelsPerUnit;
+            _collider = GetComponent<PolygonCollider2D>();
         }
 
 
@@ -165,6 +169,57 @@ namespace Cloth2D
             SetOrderedClothNodes();
         }
 
+        private void UpdateCollider()
+        {
+            if (_collider == null || !_collider.enabled)
+                return;
+
+            if (_vertices == null)
+                return;
+
+            _collider.pathCount = 1;
+            Vector2[] points = new Vector2[12];
+
+            if (_colliderPoints == null)
+                SetColliderPoints();
+
+            for (int i = 0; i < _colliderPoints.Length; i++)
+            {
+                points[i] = _vertices[_colliderPoints[i]].pos;
+            }
+
+            _collider.points = points;
+        }
+
+        private void SetColliderPoints()
+        {
+            _colliderPoints = new int[12];
+            int index;
+            int sqr = resolution * resolution;
+
+            for (int i = 0; i < 3; i++)
+            {
+                index = resolution * i / 3;
+                _colliderPoints[i] = index;
+            }
+            for (int i = 3; i < 7; i++)
+            {
+                index = (sqr - 1) - (sqr - resolution) * (6 - i) / 3; 
+                _colliderPoints[i] = FindCloseColliderPoint(index) - 1;
+            }
+            for (int i = 7; i < 10; i++)
+            {
+                index = sqr - resolution + resolution * (9 - i) / 3;
+                _colliderPoints[i] = index;
+            }
+            for (int i = 10; i < 12; i++)
+            {
+                index = (sqr - resolution) * (12 - i) / 3;
+                _colliderPoints[i] = FindCloseColliderPoint(index);
+            }
+        }
+
+
         private void UpdateCloth(float dt)
         {
             if (_vertices == null || wind2d == null || _orderedNodes == null)
@@ -182,7 +237,6 @@ namespace Cloth2D
                 {
                     ApplyGravity(node.index, dt);
                     ApplyWinds(node.index, dt);
-                    // ApplyCollision(i, dt);
                     ApplyForces(node.index, dt);
 
                     AdjustSegmentLength(node, dt);
@@ -446,6 +500,43 @@ namespace Cloth2D
             p += 3 * u * u * (1f - u) * p2;
             p += u * u * u * p3;
             return p;
+        }
+
+
+        public void OnCollisionEnter2D(Collision2D collision)
+        {
+            // TODO: implement collision
+            foreach (var p in collision.contacts)
+            {
+                int index = FindCloseHitPoint(p.point);
+                _vertices[index].vel += new Vector3(p.rigidbody.velocity.x, p.rigidbody.velocity.y, 0f);
+            }
+        }
+
+        private int FindCloseColliderPoint(int i)
+        {
+            int mod = i % resolution;
+            return (mod < resolution / 2) ? i - mod : i + (resolution - mod);
+        }
+
+        private int FindCloseHitPoint(Vector2 contactPos)
+        {
+            int point = 0;
+            float min = (_collider.points[0] - contactPos).magnitude;
+
+            // Find close point from collider
+            for (int i = 1; i < _collider.points.Length; i++)
+            {
+                float current = (_collider.points[i] * transform.localScale - contactPos).magnitude;
+                if (current < min)
+                {
+                    min = current;
+                    point = i;
+                }
+            }
+
+            // Find mesh index from point.
+            return _colliderPoints[point];
         }
 
 
