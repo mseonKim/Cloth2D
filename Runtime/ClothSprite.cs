@@ -11,15 +11,21 @@ namespace Cloth2D
         public Vector3 vel;
     }
 
-    public struct ClothNode
+    public struct Spring
     {
-        public int index;
-        public int preIndex;
+        public int p1;
+        public int p2;
+        public float ks;
+        public float kd;
+        public float restLength;
 
-        public ClothNode(int i, int pre)
+        public Spring(int p1, int p2, float ks, float kd, float restLength)
         {
-            index = i;
-            preIndex = pre;
+            this.p1 = p1;
+            this.p2 = p2;
+            this.ks = ks;
+            this.kd = kd;
+            this.restLength = restLength;
         }
     }
 
@@ -45,7 +51,7 @@ namespace Cloth2D
         private PolygonCollider2D _collider;
 
         private Vertex[] _vertices;
-        private List<ClothNode> _orderedNodes;
+        private List<Spring> _springs;
         private float _width;
         private float _height;
         private float seed;
@@ -61,6 +67,7 @@ namespace Cloth2D
         {
             Initialize();
             GenerateMesh();
+            GenerateSprings();
         }
 
         // Start is called before the first frame update
@@ -166,8 +173,68 @@ namespace Cloth2D
             _mesh.SetUVs(0, uvs);
 
             _meshFilter.mesh = _mesh;
-            SetOrderedClothNodes();
         }
+
+        private void GenerateSprings()
+        {
+            if (_vertices == null)
+                GenerateMesh();
+
+            Vector3 delta;
+            int r = resolution;
+            _springs = new List<Spring>(_vertices.Length);
+
+            // Horizontal Springs
+            for (int v = 0; v < r; v++)
+            {
+                for (int u = 0; u < r - 1; u++)
+                {
+                    delta = _vertices[v * r + u].pos - _vertices[v * r + u + 1].pos;
+                    _springs.Add(new Spring(v * r + u, v * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                }
+            }
+
+            // Vertical Springs
+            for (int u = 0; u < r; u++)
+            {
+                for (int v = 0; v < r - 1; v++)
+                {
+                    delta = _vertices[v * r + u].pos - _vertices[(v + 1) * r + u].pos;
+                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u, 0.5f, -0.25f, delta.magnitude));
+                }
+            }
+
+            // Shear Springs
+            for (int v = 0; v < r - 1; v++)
+            {
+                for (int u = 0; u < r - 1; u++)
+                {
+                    delta = _vertices[v * r + u].pos - _vertices[(v + 1) * r + u + 1].pos;
+                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                    delta = _vertices[(v + 1) * r + u].pos - _vertices[v * r + u + 1].pos;
+                    _springs.Add(new Spring((v + 1) * r + u, v * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                }
+            }
+
+            // Bend Springs
+            for (int v = 0; v < r; v++)
+            {
+                for (int u = 0; u < r - 2; u++)
+                {
+                    delta = _vertices[v * r + u].pos - _vertices[v * r + u + 2].pos;
+                    _springs.Add(new Spring(v * r + u, v * r + u + 2, 0.85f, -0.25f, delta.magnitude));
+                }
+            }
+            for (int u = 0; u < r; u++)
+            {
+                for (int v = 0; v < r - 2; v++)
+                {
+                    delta = _vertices[v * r + u].pos - _vertices[(v + 2) * r + u].pos;
+                    _springs.Add(new Spring(v * r + u, (v + 2) * r + u, 0.85f, -0.25f, delta.magnitude));
+                }
+            }
+        }
+
 
         private void UpdateCollider()
         {
@@ -222,7 +289,7 @@ namespace Cloth2D
 
         private void UpdateCloth(float dt)
         {
-            if (_vertices == null || wind2d == null || _orderedNodes == null)
+            if (_vertices == null || wind2d == null || _springs == null)
                 return;
 
             // float scaleOffset = stiffness + flexibleScale * (1f - stiffness);
@@ -231,25 +298,9 @@ namespace Cloth2D
             _maxSegmentWidthLength = _segmentWidth * flexibleScale;
             _maxSegmentHeightLength = _segmentHeight * flexibleScale;
         
-            foreach (var node in _orderedNodes)
-            {
-                if (!isAnchorVertex(node.index))
-                {
-                    ApplyGravity(node.index, dt);
-                    ApplyWinds(node.index, dt);
-                    ApplyForces(node.index, dt);
 
-                    AdjustSegmentLength(node, dt);
-                }
-            }
-
-            foreach (var node in _orderedNodes)
-            {
-                if (!isAnchorVertex(node.index))
-                {
-                    // AdjustSegmentLength(node, dt);
-                }
-            }
+            ComputeForces();
+            IntegrateEuler(dt);
 
             // Update mesh
             _mesh.SetVertices(GetVertexPositions());
@@ -272,7 +323,7 @@ namespace Cloth2D
 
         private void ApplyGravity(int i, float dt)
         {
-            _vertices[i].vel.y -= 981f * gravity * dt / sprite.pixelsPerUnit;
+            _vertices[i].vel.y -= 0.0981f * gravity * dt / sprite.pixelsPerUnit;
         }
 
         private void ApplyWinds(int i, float dt)
@@ -293,158 +344,26 @@ namespace Cloth2D
             }
         }
 
-        private void ApplyForces(int i, float dt)
+        private void ComputeForces()
         {
-            _vertices[i].pos += _vertices[i].vel * dt;
-        }
-
-        private void AdjustSegmentLength(ClothNode node, float dt)
-        {
-            int cur = node.index;
-            float elasticResponse = 1f + 3f * Mathf.Pow(1f - stiffness, 2f) / (1f + wetness * 0.25f);
-            Vector3 preVertexPos = node.preIndex != -1 ? _vertices[node.preIndex].pos : _vertices[cur].pos;
-            Vector3 diff = _vertices[cur].pos - preVertexPos;
-
-            // Horizontal
-            if (anchors.Count > 1 && anchors[0] / resolution == anchors[1] / resolution
-                && cur >= anchors[0] && cur < anchors[1])
+            for (int i = 0; i < _vertices.Length; i++)
             {
-                // Set bezier curve params
-                float u = (float)(cur - anchors[0]) / Mathf.Abs(anchors[1] - anchors[0]);
-                float anchorY = _vertices[anchors[0]].pos.y;
-                float bezierY = _segmentHeight * 2f * (1f - stiffness) + anchorY;
-                Vector3 p1 = new Vector3(_width / 3f, bezierY, 0f);
-                Vector3 p2 = new Vector3(_width * 2f / 3f, bezierY, 0f);
-                if (wind2d != null)
+                if (!isAnchorVertex(i))
                 {
-                    p1.x += wind2d.windDriection.x * wind2d.GetWind(transform.position) * _width / 2f;
-                    p2.x += wind2d.windDriection.x * wind2d.GetWind(transform.position) * _width / 2f;
-                }
-
-                // Adjust pos by bezier point
-                Vector3 bezierPoint = GetBezierCurvePoint(u, _vertices[anchors[0]].pos, p1, p2, _vertices[anchors[1]].pos);
-                float limitLowerY = -bezierPoint.y + 2 * anchorY;
-                _vertices[cur].pos.x = bezierPoint.x;
-
-                if (_vertices[cur].pos.y > bezierPoint.y)
-                {
-                    _vertices[cur].vel.y -= (_vertices[cur].pos.y - bezierPoint.y) * 0.6f;
-                    _vertices[cur].pos.y = bezierPoint.y;
-                }
-                if (_vertices[cur].pos.y < limitLowerY)
-                {
-                    _vertices[cur].vel.y -= (_vertices[cur].pos.y - limitLowerY) * 2f;
-                    _vertices[cur].pos.y = limitLowerY;
-                }
-
-                return;
-            }
-
-
-            // Vertical
-            if (anchors.Count > 1 && anchors[0] % resolution == anchors[1] % resolution
-                && cur % resolution == anchors[0] % resolution && cur < anchors[1])
-            {
-                // Set bezier curve params
-                float u = (float)(cur - anchors[0]) / Mathf.Abs(anchors[1] - anchors[0]);
-                float anchorX = _vertices[anchors[0]].pos.x;
-                float bezierX = _segmentWidth * 2f * (1f - stiffness) + anchorX;
-                Vector3 p1 = new Vector3(bezierX, -_height / 3f, 0f);
-                Vector3 p2 = new Vector3(bezierX, -_height * 2f / 3f, 0f);
-                if (wind2d != null)
-                {
-                    p1.y += wind2d.windDriection.y * wind2d.GetWind(transform.position) * _height / 2f;
-                    p2.y += wind2d.windDriection.y * wind2d.GetWind(transform.position) * _height / 2f;
-                }
-
-                // Adjust pos by bezier point
-                Vector3 bezierPoint = GetBezierCurvePoint(u, _vertices[anchors[0]].pos, p1, p2, _vertices[anchors[1]].pos);
-                float limitLowerX = -bezierPoint.x + 2 * anchorX;
-                _vertices[cur].pos.y = bezierPoint.y;
-                
-                if (_vertices[cur].pos.x > bezierPoint.x)
-                {
-                    _vertices[cur].vel.x -= (_vertices[cur].pos.x - bezierPoint.x) * 2f;
-                    _vertices[cur].pos.x = bezierPoint.x;
-                }
-                if (_vertices[cur].pos.x < limitLowerX)
-                {
-                    _vertices[cur].vel.x -= (_vertices[cur].pos.x - limitLowerX) * 2f;
-                    _vertices[cur].pos.x = limitLowerX;
-                }
-
-                return;
-            }
-
-            
-            if (Mathf.Abs(cur - node.preIndex) == 1)
-            {
-                if (diff.magnitude > _maxSegmentWidthLength)
-                {
-                    Vector3 newPos = preVertexPos + diff.normalized * _maxSegmentWidthLength;
-                    _vertices[cur].vel += elasticResponse * (newPos - _vertices[cur].pos);
-                    _vertices[cur].pos = newPos;
-                }
-            }
-            else
-            {
-                if (diff.magnitude > _maxSegmentHeightLength)
-                {
-                    Vector3 newPos = preVertexPos + diff.normalized * _maxSegmentHeightLength;
-                    _vertices[cur].vel += elasticResponse * (newPos - _vertices[cur].pos);
-                    _vertices[cur].pos = newPos;
+                    // ApplyGravity(i, dt);
+                    // ApplyWinds(i, dt);
                 }
             }
         }
 
-
-        private void SetOrderedClothNodes()
+        private void IntegrateEuler(float dt)
         {
-            _orderedNodes = new List<ClothNode>(_vertices.Length);
-            bool[] visited = new bool[_vertices.Length];
-            Queue<int> queue = new Queue<int>();
-            
-            // Set default start index to 0 if no anchor
-            if (anchors.Count == 0)
-            {
-                queue.Enqueue(0);
-                visited[0] = true;
-                _orderedNodes.Add(new ClothNode(0, -1));
-            }
 
-            foreach (int i in anchors)
-            {
-                queue.Enqueue(i);
-                visited[i] = true;
-                _orderedNodes.Add(new ClothNode(i, -1));
-            }
-
-            // BFS
-            while (queue.Count > 0)
-            {
-                int i = queue.Dequeue();
-                // Add to nodes if not visited
-                foreach (int next in GetAdjacentVertexIndices(i))
-                {
-                    if (!visited[next])
-                    {
-                        queue.Enqueue(next);
-                        visited[next] = true;
-                        _orderedNodes.Add(new ClothNode(next, i));
-                    }
-                }
-            }
         }
 
-        private int GetVisitedNodeCount(ref bool[] visited)
+        private void AdjustSegmentLength(int i, float dt)
         {
-            int count = 0;
-            for (int i = 0; i < visited.Length; i++)
-            {
-                if (visited[i])
-                    count++;
-            }
-            return count;
+
         }
 
         private List<int> GetAdjacentVertexIndices(int i)
@@ -492,16 +411,6 @@ namespace Cloth2D
             
             return indices;
         }
-
-        private Vector3 GetBezierCurvePoint(float u, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
-        {
-            Vector3 p = Mathf.Pow(1f - u, 3f) * p0;
-            p += 3 * u * (1f - u) * (1f - u) * p1;
-            p += 3 * u * u * (1f - u) * p2;
-            p += u * u * u * p3;
-            return p;
-        }
-
 
         public void OnCollisionEnter2D(Collision2D collision)
         {
