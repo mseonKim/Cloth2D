@@ -9,6 +9,7 @@ namespace Cloth2D
     {
         public Vector3 pos;
         public Vector3 vel;
+        public Vector3 f;
     }
 
     public struct Spring
@@ -81,7 +82,7 @@ namespace Cloth2D
         void Update()
         {
             GenerateMesh();
-            UpdateCollider();
+            // UpdateCollider();
             UpdateCloth(Time.deltaTime);
         }
 
@@ -133,6 +134,7 @@ namespace Cloth2D
             {
                 _vertices[i].pos = new Vector3(_width / offset * (i % resolution), -_height / offset * (i / resolution), 0f);
                 _vertices[i].vel = Vector3.zero;
+                _vertices[i].f = Vector3.zero;
             }
             _mesh.SetVertices(GetVertexPositions());
 
@@ -183,6 +185,9 @@ namespace Cloth2D
             Vector3 delta;
             int r = resolution;
             _springs = new List<Spring>(_vertices.Length);
+            float	KsStruct = 0.5f, KdStruct = -0.25f;
+            float	KsShear = 0.5f, KdShear = -0.25f;
+            float	KsBend = 0.85f, KdBend = -0.25f;
 
             // Horizontal Springs
             for (int v = 0; v < r; v++)
@@ -190,7 +195,7 @@ namespace Cloth2D
                 for (int u = 0; u < r - 1; u++)
                 {
                     delta = _vertices[v * r + u].pos - _vertices[v * r + u + 1].pos;
-                    _springs.Add(new Spring(v * r + u, v * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring(v * r + u, v * r + u + 1, KsStruct, KdStruct, delta.magnitude));
                 }
             }
 
@@ -200,7 +205,7 @@ namespace Cloth2D
                 for (int v = 0; v < r - 1; v++)
                 {
                     delta = _vertices[v * r + u].pos - _vertices[(v + 1) * r + u].pos;
-                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u, 0.5f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u, KsStruct, KdStruct, delta.magnitude));
                 }
             }
 
@@ -210,9 +215,9 @@ namespace Cloth2D
                 for (int u = 0; u < r - 1; u++)
                 {
                     delta = _vertices[v * r + u].pos - _vertices[(v + 1) * r + u + 1].pos;
-                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring(v * r + u, (v + 1) * r + u + 1, KsShear, KdShear, delta.magnitude));
                     delta = _vertices[(v + 1) * r + u].pos - _vertices[v * r + u + 1].pos;
-                    _springs.Add(new Spring((v + 1) * r + u, v * r + u + 1, 0.5f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring((v + 1) * r + u, v * r + u + 1, KsShear, KdShear, delta.magnitude));
                 }
             }
 
@@ -222,7 +227,7 @@ namespace Cloth2D
                 for (int u = 0; u < r - 2; u++)
                 {
                     delta = _vertices[v * r + u].pos - _vertices[v * r + u + 2].pos;
-                    _springs.Add(new Spring(v * r + u, v * r + u + 2, 0.85f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring(v * r + u, v * r + u + 2, KsBend, KdBend, delta.magnitude));
                 }
             }
             for (int u = 0; u < r; u++)
@@ -230,7 +235,7 @@ namespace Cloth2D
                 for (int v = 0; v < r - 2; v++)
                 {
                     delta = _vertices[v * r + u].pos - _vertices[(v + 2) * r + u].pos;
-                    _springs.Add(new Spring(v * r + u, (v + 2) * r + u, 0.85f, -0.25f, delta.magnitude));
+                    _springs.Add(new Spring(v * r + u, (v + 2) * r + u, KsBend, KdBend, delta.magnitude));
                 }
             }
         }
@@ -301,6 +306,7 @@ namespace Cloth2D
 
             ComputeForces();
             IntegrateEuler(dt);
+            ApplyProvotDynamicInverse();
 
             // Update mesh
             _mesh.SetVertices(GetVertexPositions());
@@ -321,9 +327,10 @@ namespace Cloth2D
             return anchors.Contains(i);
         }
 
-        private void ApplyGravity(int i, float dt)
+        private void ApplyGravity(int i)
         {
-            _vertices[i].vel.y -= 0.0981f * gravity * dt / sprite.pixelsPerUnit;
+            // _vertices[i].vel.y -= 0.0981f * gravity * dt / sprite.pixelsPerUnit;
+            _vertices[i].f.y -= 0.981f * gravity / sprite.pixelsPerUnit;
         }
 
         private void ApplyWinds(int i, float dt)
@@ -348,22 +355,79 @@ namespace Cloth2D
         {
             for (int i = 0; i < _vertices.Length; i++)
             {
+                _vertices[i].f = Vector3.zero;
                 if (!isAnchorVertex(i))
                 {
-                    // ApplyGravity(i, dt);
+                    ApplyGravity(i);
                     // ApplyWinds(i, dt);
                 }
+
+                // Dampling
+                _vertices[i].f += -0.125f * _vertices[i].vel;
+            }
+
+            // Add spring forces
+            for (int i = 0; i < _springs.Count; i++)
+            {
+                Spring s = _springs[i];
+                Vector3 deltaP = _vertices[s.p1].pos - _vertices[s.p2].pos;
+                Vector3 deltaV = _vertices[s.p1].vel - _vertices[s.p2].vel;
+                float dist = deltaP.magnitude;
+
+                float leftTerm = -s.ks * (dist - s.restLength);
+                float rightTerm = -s.kd * (Vector3.Dot(deltaV, deltaV) / dist);
+                Vector3 springForce = (leftTerm + rightTerm) * deltaP.normalized;
+
+                if (!isAnchorVertex(s.p1))
+                    _vertices[s.p1].f += springForce;
+                if (!isAnchorVertex(s.p2))
+                    _vertices[s.p2].f -= springForce;
             }
         }
 
         private void IntegrateEuler(float dt)
         {
+            float dtMass = dt / weight;
 
+            for (int i = 0; i < _vertices.Length; i++)
+            {
+                Vector3 oldV = _vertices[i].vel;
+                _vertices[i].vel += _vertices[i].f * dtMass;
+                _vertices[i].pos += dt * oldV;
+            }
         }
 
-        private void AdjustSegmentLength(int i, float dt)
+        private void ApplyProvotDynamicInverse()
         {
+            Spring s;
+            for (int i = 0; i < _springs.Count; i++)
+            {
+                s = _springs[i];
+                Vector3 deltaP = _vertices[s.p1].pos - _vertices[s.p2].pos;
+                float dist = deltaP.magnitude;
 
+                if (dist > s.restLength)
+                {
+                    dist -= s.restLength;
+                    dist /= 2f;
+                    deltaP.Normalize();
+                    deltaP *= dist;
+
+                    if (isAnchorVertex(s.p1))
+                    {
+                        _vertices[s.p2].vel += deltaP;
+                    }
+                    else if (isAnchorVertex(s.p2))
+                    {
+                        _vertices[s.p1].vel -= deltaP;
+                    }
+                    else
+                    {
+                        _vertices[s.p1].vel -= deltaP;
+                        _vertices[s.p2].vel += deltaP;
+                    }
+                }
+            }
         }
 
         private List<int> GetAdjacentVertexIndices(int i)
