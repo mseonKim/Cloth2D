@@ -37,7 +37,7 @@ namespace Cloth2D
         public bool reverseTexture;
         [Range(4, 16)] public int resolution = 12;
         [Range(-10f, 10f)] public float gravity = 1f;
-        [Range(0.1f, 10f)] public float weight = 1f;
+        [Range(0.1f, 10f)] public float mass = 1f;
         [Range(0f, 1f)] public float stiffness = 0.5f;
         [Range(1f, 2f)] public float flexibleScale = 1.2f;
         [Range(0f, 1f)] public float wetness = 0f;
@@ -58,8 +58,6 @@ namespace Cloth2D
         private float seed;
         private float _segmentWidth;
         private float _segmentHeight;
-        private float _maxSegmentWidthLength;
-        private float _maxSegmentHeightLength;
         private int _preResolution;
         private int[] _colliderPoints;
 
@@ -300,12 +298,11 @@ namespace Cloth2D
             // float scaleOffset = stiffness + flexibleScale * (1f - stiffness);
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
-            _maxSegmentWidthLength = _segmentWidth * flexibleScale;
-            _maxSegmentHeightLength = _segmentHeight * flexibleScale;
-        
 
-            ComputeForces();
-            IntegrateEuler(dt);
+            ComputeForces(dt);
+            // IntegrateEuler(dt);
+            // IntegrateRK4(dt);
+            IntegrateMidPointEuler(dt);
             ApplyProvotDynamicInverse();
 
             // Update mesh
@@ -330,7 +327,7 @@ namespace Cloth2D
         private void ApplyGravity(int i)
         {
             // _vertices[i].vel.y -= 0.0981f * gravity * dt / sprite.pixelsPerUnit;
-            _vertices[i].f.y -= 0.981f * gravity / sprite.pixelsPerUnit;
+            _vertices[i].f.y -= 98.1f * gravity / sprite.pixelsPerUnit;
         }
 
         private void ApplyWinds(int i, float dt)
@@ -338,10 +335,10 @@ namespace Cloth2D
             float wind =  wind2d.GetWind(transform.position);
             float wet = wetness * 0.25f;
             
-            _vertices[i].vel.x += Mathf.Pow(wind / (weight + wet), 1.5f) * wind2d.windDriection.x * _segmentWidth;
-            _vertices[i].vel.y += Mathf.Pow(wind / (weight + wet), 1.5f) * wind2d.windDriection.y * _segmentHeight;
-            _vertices[i].vel.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 0.5f;
-            _vertices[i].vel.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 0.5f;
+            _vertices[i].f.x += Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection.x * _segmentWidth * 10f;
+            _vertices[i].f.y += Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection.y * _segmentHeight * 10f;
+            _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 10f;
+            _vertices[i].f.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 10f;
             
             if (wetness > 0f)
             {
@@ -351,7 +348,7 @@ namespace Cloth2D
             }
         }
 
-        private void ComputeForces()
+        private void ComputeForces(float dt)
         {
             for (int i = 0; i < _vertices.Length; i++)
             {
@@ -359,11 +356,11 @@ namespace Cloth2D
                 if (!isAnchorVertex(i))
                 {
                     ApplyGravity(i);
-                    // ApplyWinds(i, dt);
+                    ApplyWinds(i, dt);
                 }
 
                 // Dampling
-                _vertices[i].f += -0.125f * _vertices[i].vel;
+                _vertices[i].f += -1.25f * _vertices[i].vel;
             }
 
             // Add spring forces
@@ -378,6 +375,9 @@ namespace Cloth2D
                 float rightTerm = -s.kd * (Vector3.Dot(deltaV, deltaV) / dist);
                 Vector3 springForce = (leftTerm + rightTerm) * deltaP.normalized;
 
+                if (springForce.magnitude > 100f)
+                    springForce = springForce.normalized * 100f;
+
                 if (!isAnchorVertex(s.p1))
                     _vertices[s.p1].f += springForce;
                 if (!isAnchorVertex(s.p2))
@@ -387,13 +387,86 @@ namespace Cloth2D
 
         private void IntegrateEuler(float dt)
         {
-            float dtMass = dt / weight;
+            float dtMass = dt / mass;
 
             for (int i = 0; i < _vertices.Length; i++)
             {
                 Vector3 oldV = _vertices[i].vel;
                 _vertices[i].vel += _vertices[i].f * dtMass;
                 _vertices[i].pos += dt * oldV;
+            }
+        }
+
+        private void IntegrateMidPointEuler(float dt)
+        {
+            float halfDeltaTime = dt / 2f;
+            float dtMass = halfDeltaTime / mass;
+            int i = 0;
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                Vector3 oldV = _vertices[i].vel;
+                _vertices[i].vel += _vertices[i].f * dtMass;
+                _vertices[i].pos += dt * oldV;
+            }
+
+            ComputeForces(dt);
+
+            dtMass = dt / mass;
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                Vector3 oldV = _vertices[i].vel;
+                _vertices[i].vel += _vertices[i].f * dtMass;
+                _vertices[i].pos += dt * oldV;
+            }
+        }
+
+        private void IntegrateRK4(float dt)
+        {
+            float halfDeltaTime  = dt / 2f;
+            float thirdDeltaTime = 1 / 3f;
+            float sixthDeltaTime = 1 / 6f;
+            float halfDTMass = halfDeltaTime/ mass;
+            float dtMass = dt/ mass;
+            int i = 0;
+
+            Vector3[] sumF = new Vector3[_vertices.Length];
+            Vector3[] sumV = new Vector3[_vertices.Length];
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                sumF[i] = (_vertices[i].f * halfDTMass) * sixthDeltaTime;
+		        sumV[i] = halfDeltaTime * _vertices[i].vel  * sixthDeltaTime;
+            }
+
+            ComputeForces(dt);
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                sumF[i] = (_vertices[i].f * halfDTMass) * thirdDeltaTime;
+		        sumV[i] = halfDeltaTime * _vertices[i].vel  * thirdDeltaTime;
+            }
+
+            ComputeForces(dt);
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                sumF[i] = (_vertices[i].f * dtMass) * thirdDeltaTime;
+		        sumV[i] = dt * _vertices[i].vel  * thirdDeltaTime;
+            }
+
+            ComputeForces(dt);
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                sumF[i] = (_vertices[i].f * dtMass) * sixthDeltaTime;
+		        sumV[i] = dt * _vertices[i].vel  * sixthDeltaTime;
+            }
+
+            for (i = 0; i < _vertices.Length; i++)
+            {
+                _vertices[i].vel += sumF[i];
+                _vertices[i].pos += sumV[i];
             }
         }
 
