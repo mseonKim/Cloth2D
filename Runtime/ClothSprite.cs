@@ -39,7 +39,6 @@ namespace Cloth2D
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
         [Range(0f, 1f)] public float stiffness = 0.5f;
-        [Range(1f, 2f)] public float flexibleScale = 1.2f;
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
         public List<int> anchors = new List<int>();
@@ -180,12 +179,13 @@ namespace Cloth2D
             if (_vertices == null)
                 GenerateMesh();
 
+            float KsStruct = 0.5f, KdStruct = -0.25f;
+            float KsShear = 0.5f, KdShear = -0.25f;
+            float KsBend = 0.85f, KdBend = -0.25f;
+
             Vector3 delta;
             int r = resolution;
             _springs = new List<Spring>(_vertices.Length);
-            float	KsStruct = 0.5f, KdStruct = -0.25f;
-            float	KsShear = 0.5f, KdShear = -0.25f;
-            float	KsBend = 0.85f, KdBend = -0.25f;
 
             // Horizontal Springs
             for (int v = 0; v < r; v++)
@@ -335,8 +335,9 @@ namespace Cloth2D
             float wind =  wind2d.GetWind(transform.position);
             float wet = wetness * 0.25f;
             
-            _vertices[i].f.x += Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection.x * _segmentWidth * 10f;
-            _vertices[i].f.y += Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection.y * _segmentHeight * 10f;
+            Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
+            _vertices[i].f.x += windForce.x * _segmentWidth;
+            _vertices[i].f.y += windForce.y * _segmentHeight;
             _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 10f;
             _vertices[i].f.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 10f;
             
@@ -375,8 +376,9 @@ namespace Cloth2D
                 float rightTerm = -s.kd * (Vector3.Dot(deltaV, deltaV) / dist);
                 Vector3 springForce = (leftTerm + rightTerm) * deltaP.normalized;
 
-                if (springForce.magnitude > 100f)
-                    springForce = springForce.normalized * 100f;
+                float maxForce = Mathf.Max(_segmentWidth, _segmentHeight);
+                if (springForce.magnitude > maxForce)
+                    springForce = springForce.normalized * maxForce;
 
                 if (!isAnchorVertex(s.p1))
                     _vertices[s.p1].f += springForce;
@@ -391,33 +393,28 @@ namespace Cloth2D
 
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Vector3 oldV = _vertices[i].vel;
+                _vertices[i].pos += dt * _vertices[i].vel;
                 _vertices[i].vel += _vertices[i].f * dtMass;
-                _vertices[i].pos += dt * oldV;
             }
         }
 
         private void IntegrateMidPointEuler(float dt)
         {
-            float halfDeltaTime = dt / 2f;
-            float dtMass = halfDeltaTime / mass;
+            float dtMass = dt / mass;
             int i = 0;
 
             for (i = 0; i < _vertices.Length; i++)
             {
-                Vector3 oldV = _vertices[i].vel;
-                _vertices[i].vel += _vertices[i].f * dtMass;
-                _vertices[i].pos += dt * oldV;
+                _vertices[i].vel += _vertices[i].f * dtMass / 2f;
+                _vertices[i].pos += dt * _vertices[i].vel;
             }
 
             ComputeForces(dt);
 
-            dtMass = dt / mass;
             for (i = 0; i < _vertices.Length; i++)
             {
-                Vector3 oldV = _vertices[i].vel;
                 _vertices[i].vel += _vertices[i].f * dtMass;
-                _vertices[i].pos += dt * oldV;
+                _vertices[i].pos += dt * _vertices[i].vel;
             }
         }
 
@@ -426,8 +423,8 @@ namespace Cloth2D
             float halfDeltaTime  = dt / 2f;
             float thirdDeltaTime = 1 / 3f;
             float sixthDeltaTime = 1 / 6f;
-            float halfDTMass = halfDeltaTime/ mass;
-            float dtMass = dt/ mass;
+            float halfDTMass = halfDeltaTime / mass;
+            float dtMass = dt / mass;
             int i = 0;
 
             Vector3[] sumF = new Vector3[_vertices.Length];
@@ -472,82 +469,40 @@ namespace Cloth2D
 
         private void ApplyProvotDynamicInverse()
         {
-            Spring s;
             for (int i = 0; i < _springs.Count; i++)
             {
-                s = _springs[i];
-                Vector3 deltaP = _vertices[s.p1].pos - _vertices[s.p2].pos;
+                int p1 = _springs[i].p1;
+                int p2 = _springs[i].p2;
+                Vector3 deltaP = _vertices[p1].pos - _vertices[p2].pos;
                 float dist = deltaP.magnitude;
 
-                if (dist > s.restLength)
+                if (dist > _springs[i].restLength)
                 {
-                    dist -= s.restLength;
-                    dist /= 2f;
-                    deltaP.Normalize();
-                    deltaP *= dist;
+                    // Min: 0.1, Max: 8
+                    float rate = 2f * Mathf.Pow((2f * stiffness - 2f), 2f);
+                    if (rate < 0.1f)
+                        rate = 0.1f;
 
-                    if (isAnchorVertex(s.p1))
+                    dist = (dist - _springs[i].restLength) / rate;
+                    deltaP = deltaP.normalized * dist;
+
+                    if (isAnchorVertex(p1))
                     {
-                        _vertices[s.p2].vel += deltaP;
+                        _vertices[p2].vel += deltaP;
                     }
-                    else if (isAnchorVertex(s.p2))
+                    else if (isAnchorVertex(p2))
                     {
-                        _vertices[s.p1].vel -= deltaP;
+                        _vertices[p1].vel -= deltaP;
                     }
                     else
                     {
-                        _vertices[s.p1].vel -= deltaP;
-                        _vertices[s.p2].vel += deltaP;
+                        _vertices[p1].vel -= deltaP;
+                        _vertices[p2].vel += deltaP;
                     }
                 }
             }
         }
 
-        private List<int> GetAdjacentVertexIndices(int i)
-        {
-            List<int> indices = new List<int>(4);
-
-            // For Vertical Anchors
-            if (anchors.Count == 2 && anchors[0] % resolution == anchors[1] % resolution)
-            {
-                if (i % resolution > 0)
-                    indices.Add(i - 1);
-
-                if (i / resolution > 0)
-                    indices.Add(i - resolution);
-
-                if (i / resolution < resolution - 1)
-                    indices.Add(i + resolution);
-
-                if (i % resolution < resolution - 1)
-                    indices.Add(i + 1);
-
-                // Reverse if the anchor is right
-                if (anchors.Count > 0 && anchors[0] == resolution - 1)
-                    indices.Reverse();
-            }
-            // For Horizontal & Etc.
-            else
-            {
-                if (i / resolution > 0)
-                    indices.Add(i - resolution);
-
-                if (i % resolution > 0)
-                    indices.Add(i - 1);
-
-                if (i % resolution < resolution - 1)
-                    indices.Add(i + 1);
-
-                if (i / resolution < resolution - 1)
-                    indices.Add(i + resolution);
-
-                // Reverse if the anchor is down
-                if (anchors.Count > 0 && anchors[0] / resolution == resolution - 1)
-                    indices.Reverse();
-            }
-            
-            return indices;
-        }
 
         public void OnCollisionEnter2D(Collision2D collision)
         {
@@ -555,7 +510,10 @@ namespace Cloth2D
             foreach (var p in collision.contacts)
             {
                 int index = FindCloseHitPoint(p.point);
-                _vertices[index].vel += new Vector3(p.rigidbody.velocity.x, p.rigidbody.velocity.y, 0f);
+                if (!isAnchorVertex(index))
+                {
+                    _vertices[index].vel += new Vector3(p.rigidbody.velocity.x, p.rigidbody.velocity.y, 0f);
+                }
             }
         }
 

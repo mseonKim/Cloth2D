@@ -1,34 +1,10 @@
-# About Sprite Editor
+# 2D Cloth
 
-Use Unity’s Sprite Editor to create and edit Sprite assets. Sprite Editor provides user extensibility to add custom behaviour for editing various Sprite related data.
+The 2D cloth system for Unity. Use _"2D Object -> Cloth Sprite"_ to create new cloth sprite gameobject.
+This package contains 2D Cloth and 2D Wind to support multiple clothes with wind.
 
-# Installing Sprite Editor
+## Cloth2D
+You can use 2D clothes as many as you want. Consider which resolution is the best option for your game performance.
 
-To install this package, follow the instructions in the [Package Manager documentation](https://docs.unity3d.com/Packages/com.unity.package-manager-ui@latest/index.html).
-
-# Using Sprite Editor
-
-The Sprite Editor Manual can be found [here] (https://docs.unity3d.com/Manual/SpriteEditor.html).
-
-
-# Technical details
-## Requirements
-
-This version of Sprite Editor is compatible with the following versions of the Unity Editor:
-
-* 2019.2 and later (recommended)
-
-## Package contents
-
-The following table indicates the folder structure of the Sprite package:
-
-|Location|Description|
-|---|---|
-|`<Editor>`|Root folder containing the source for the Sprite Editor.|
-|`<Tests>`|Root folder containing the source for the tests for Sprite Editpr used the Unity Editor Test Runner.|
-
-## Document revision history
-
-|Date|Reason|
-|---|---|
-|January 25, 2019|Document created. Matches package version 1.0.0|
+## Wind2D
+You can control 2D clothes with this class. It is possible to dispose multiple wind gameobjects in the scene.
