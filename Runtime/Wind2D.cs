@@ -33,7 +33,7 @@ namespace Cloth2D
             return Mathf.Max(0f, wind * (1 - dist / maxDistance));
         }
 
-        private void OnDrawGizmosSelected()
+        private void OnDrawGizmos()
         {
             int number = 5;
             Gizmos.color = new Color(0f, 1f, 1f, 0.5f);

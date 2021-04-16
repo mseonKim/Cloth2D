@@ -30,7 +30,6 @@ namespace Cloth2D
         }
     }
 
-    [ExecuteAlways]
     public class ClothSprite : MonoBehaviour
     {
         public Sprite sprite;
@@ -57,15 +56,15 @@ namespace Cloth2D
         private float seed;
         private float _segmentWidth;
         private float _segmentHeight;
-        private int _preResolution;
         private int[] _colliderPoints;
+
+        private int _preSpriteId = -1;
+        private int _preResolution;
 
 
         void Awake()
         {
             Initialize();
-            GenerateMesh();
-            GenerateSprings();
         }
 
         // Start is called before the first frame update
@@ -78,11 +77,28 @@ namespace Cloth2D
         // Update is called once per frame
         void Update()
         {
-            GenerateMesh();
             // UpdateCollider();
             UpdateCloth(Time.deltaTime);
         }
 
+        void OnValidate()
+        {
+            if (sprite == null)
+            {
+                if (_preSpriteId != -1)
+                {
+                    _preSpriteId = -1;
+                    _meshFilter.mesh = new Mesh();
+                    _vertices = null;
+                }
+                return;
+            }
+                
+            if (_preResolution != resolution || _preSpriteId != sprite.GetInstanceID())
+            {
+                Initialize();
+            }
+        }
 
         private void Initialize()
         {
@@ -92,6 +108,9 @@ namespace Cloth2D
             _width = sprite.texture.width / sprite.pixelsPerUnit;
             _height = sprite.texture.height / sprite.pixelsPerUnit;
             _collider = GetComponent<PolygonCollider2D>();
+
+            GenerateMesh();
+            GenerateSprings();
         }
 
 
@@ -105,11 +124,12 @@ namespace Cloth2D
             *  P12 P13 P14 P15
             */
 
-            if (resolution == _preResolution || sprite == null)
+            if (sprite == null)
                 return;
 
             // Set values
             _preResolution = resolution;
+            _preSpriteId = sprite.GetInstanceID();
 
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
@@ -155,19 +175,24 @@ namespace Cloth2D
             Vector3[] normals = new Vector3[length];
             for (int i = 0; i < length; i++)
             {
-                normals[i] = -Vector3.forward;
+                normals[i] = Vector3.forward;
             }
             _mesh.normals = normals;
 
             // Set UVs
             List<Vector2> uvs = new List<Vector2>(length);
-            for (int i = length - 1; i >= 0; i--)
-            {
-                uvs.Add(new Vector2(_vertices[i].pos.x / _width, -_vertices[i].pos.y / _height));
-            }
             if (reverseTexture)
             {
-                uvs.Reverse();
+                for (int i = 0; i < length; i++)
+                    uvs.Add(new Vector2(_vertices[i].pos.x / _width, - _vertices[i].pos.y / _height));
+            }
+            else
+            {
+                for (int i = resolution - 1; i >= 0; i--)
+                {
+                    for (int i2 = 0; i2 < resolution; i2++)
+                        uvs.Add(new Vector2(_vertices[i * resolution + i2].pos.x / _width, - _vertices[i * resolution + i2].pos.y / _height));
+                }
             }
             _mesh.SetUVs(0, uvs);
 
@@ -292,7 +317,7 @@ namespace Cloth2D
 
         private void UpdateCloth(float dt)
         {
-            if (_vertices == null || wind2d == null || _springs == null)
+            if (sprite == null || _vertices == null || _springs == null)
                 return;
 
             // float scaleOffset = stiffness + flexibleScale * (1f - stiffness);
@@ -332,6 +357,9 @@ namespace Cloth2D
 
         private void ApplyWinds(int i, float dt)
         {
+            if (wind2d == null)
+                return;
+
             float wind =  wind2d.GetWind(transform.position);
             float wet = wetness * 0.25f;
             
@@ -478,8 +506,8 @@ namespace Cloth2D
 
                 if (dist > _springs[i].restLength)
                 {
-                    // Min: 0.1, Max: 8
-                    float rate = 2f * Mathf.Pow((2f * stiffness - 2f), 2f);
+                    // Min: 0.1, Max: 4
+                    float rate = Mathf.Pow((2f * stiffness - 2f), 2f);
                     if (rate < 0.1f)
                         rate = 0.1f;
 
