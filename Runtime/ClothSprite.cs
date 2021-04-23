@@ -113,8 +113,10 @@ namespace Cloth2D
 
         public void OnCollisionEnter2D(Collision2D collision)
         {
+            ContactPoint2D[] contactPoints = null;
+            collision.GetContacts(contactPoints);
             // TODO: implement collision
-            foreach (var p in collision.contacts)
+            foreach (var p in contactPoints)
             {
                 Debug.Log(p.point);
                 // int index = FindCloseHitPoint(p.point);
@@ -152,6 +154,8 @@ namespace Cloth2D
 
             _width = sprite.texture.width / sprite.pixelsPerUnit;
             _height = sprite.texture.height / sprite.pixelsPerUnit;
+            _segmentWidth = _width / resolution;
+            _segmentHeight = _height / resolution;
             _collider = GetComponent<PolygonCollider2D>();
 
             SetAnchors();
@@ -364,13 +368,9 @@ namespace Cloth2D
             if (sprite == null || _vertices == null || _springs == null)
                 return;
 
-            _segmentWidth = _width / resolution;
-            _segmentHeight = _height / resolution;
-
             ComputeForces(dt);
-            // IntegrateEuler(dt);
-            // IntegrateRK4(dt);
             IntegrateMidPointEuler(dt);
+            // IntegrateRK4(dt);
             ApplyProvotDynamicInverse();
 
             // Update mesh
@@ -461,7 +461,7 @@ namespace Cloth2D
 
         private void ApplyWinds(int i, float dt)
         {
-            foreach(var wind2d in Wind2DReceiver.GetInstance().Winds)
+            foreach(var wind2d in Wind2DReceiver.GetInstance().Winds.Values)
             {
                 float wind =  wind2d.GetWind(transform.position);
                 float turbulence =  wind2d.GetTurbulence(transform.position);
@@ -480,7 +480,6 @@ namespace Cloth2D
                         wetness = 0f;
                 }
             }
-
         }
 
         private void ComputeForces(float dt)
@@ -525,17 +524,6 @@ namespace Cloth2D
                     _vertices[s.p1].f += springForce;
                 if (!isAnchorVertex(s.p2))
                     _vertices[s.p2].f -= springForce;
-            }
-        }
-
-        private void IntegrateEuler(float dt)
-        {
-            float dtMass = dt / mass;
-
-            for (int i = 0; i < _vertices.Length; i++)
-            {
-                _vertices[i].pos += dt * _vertices[i].vel;
-                _vertices[i].vel += _vertices[i].f * dtMass;
             }
         }
 

@@ -6,7 +6,7 @@ namespace Cloth2D
 {
     public class Wind2DReceiver
     {
-        public List<Wind2D> Winds { get; private set; }
+        public Dictionary<int, Wind2D> Winds { get; private set; }
 
         private static class InnerWind2DReceiverInstance
         {
@@ -20,17 +20,21 @@ namespace Cloth2D
 
         private Wind2DReceiver()
         {
-            Winds = new List<Wind2D>();
+            Winds = new Dictionary<int, Wind2D>();
         }
 
         public void RegisterWind(Wind2D wind)
         {
-            Winds.Add(wind);
+            int guid = wind.gameObject.GetInstanceID();
+            if (!Winds.ContainsKey(guid))
+            {
+                Winds.Add(wind.gameObject.GetInstanceID(), wind);
+            }
         }
 
-        public void UnRegisterWind(Wind2D wind)
+        public void UnRegisterWind(int guid)
         {
-            Winds.Remove(wind);
+            Winds.Remove(guid);
         }
 
         public void ClearWinds()

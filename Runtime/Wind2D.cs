@@ -24,7 +24,7 @@ namespace Cloth2D
             }
         }
 
-        void Start()
+        void OnEnable()
         {
             Wind2DReceiver.GetInstance().RegisterWind(this);
         }
@@ -55,9 +55,9 @@ namespace Cloth2D
             return Mathf.Max(0f, _turbulence * (1 - dist / maxDistance));
         }
 
-        void OnDestroy()
+        void OnDisable()
         {
-            Wind2DReceiver.GetInstance().UnRegisterWind(this);
+            Wind2DReceiver.GetInstance().UnRegisterWind(this.gameObject.GetInstanceID());
         }
 
         private void OnDrawGizmos()

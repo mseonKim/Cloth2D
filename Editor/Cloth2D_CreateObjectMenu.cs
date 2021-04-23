@@ -5,10 +5,10 @@ namespace Cloth2D.EditorUtility
 {
     public static class Cloth2D_CreateObjectMenu
     {
-        [MenuItem("GameObject/2D Object/Cloth Sprite", false)]
+        [MenuItem("GameObject/2D Object/2D Cloth", false)]
         static void CreateClothSprite(MenuCommand menuCommand)
         {
-            GameObject go = new GameObject("New Cloth Sprite");
+            GameObject go = new GameObject("2D Cloth");
 
             go.AddComponent<MeshFilter>();
 
@@ -20,16 +20,23 @@ namespace Cloth2D.EditorUtility
 
             GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
             Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
-            Selection.activeObject = go;
 
             // Create wind if not exists
             if (GameObject.FindObjectOfType<Wind2D>() == null)
             {
-                go = new GameObject("2D Wind");
-                go.AddComponent<Wind2D>();
-                GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
-                Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
+                CreateWind2D(menuCommand);
             }
+            Selection.activeObject = go;
+        }
+
+        [MenuItem("GameObject/2D Object/2D Wind", false)]
+        static void CreateWind2D(MenuCommand menuCommand)
+        {
+            GameObject go = new GameObject("2D Wind");
+            go.AddComponent<Wind2D>();
+            GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
+            Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
+            Selection.activeObject = go;
         }
     }
 }
