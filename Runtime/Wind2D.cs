@@ -7,18 +7,27 @@ namespace Cloth2D
     {
         [SerializeField]
         [Range(0f, 1f)]
-        private float wind = 0.3f; // Vanila wind
+        private float _wind = 0.3f; // Vanila wind
         [Tooltip("Apply attenuation by distance.")]
         public bool attenuation;
         [Tooltip("How far the wind could reach.")]
         [Range(0f, 10000f)] public float maxDistance = 1000f;
-        [Range(0f, 1f)] public float turbulence = 0.1f;
+        [SerializeField]
+        [Range(0f, 1f)] private float _turbulence = 0.1f;
 
-        public Vector3 windDriection { get {
-            float rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
-            return new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f);
-        }}
+        public Vector3 windDriection
+        {
+            get
+            {
+                float rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+                return new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f);
+            }
+        }
 
+        void Start()
+        {
+            Wind2DReceiver.GetInstance().RegisterWind(this);
+        }
 
         public float GetWind(Vector3 pos)
         {
@@ -28,9 +37,27 @@ namespace Cloth2D
                 return 0f;
 
             if (!attenuation)
-                return wind;
+                return _wind;
             
-            return Mathf.Max(0f, wind * (1 - dist / maxDistance));
+            return Mathf.Max(0f, _wind * (1 - dist / maxDistance));
+        }
+
+        public float GetTurbulence(Vector3 pos)
+        {
+            float dist = (transform.position - pos).magnitude;
+            
+            if (dist > maxDistance)
+                return 0f;
+
+            if (!attenuation)
+                return _turbulence;
+            
+            return Mathf.Max(0f, _turbulence * (1 - dist / maxDistance));
+        }
+
+        void OnDestroy()
+        {
+            Wind2DReceiver.GetInstance().UnRegisterWind(this);
         }
 
         private void OnDrawGizmos()

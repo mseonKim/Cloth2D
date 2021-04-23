@@ -30,20 +30,38 @@ namespace Cloth2D
         }
     }
 
+    public enum Cloth2DMode
+    {
+        None,
+        Top_Left,
+        Top_Right,
+        Horizontal_Two,
+        Horizontal_Three,
+        Horizontal_All,
+        Vertical_Two,
+        Vertical_All,
+        Vertical_Right_Two,
+        Vertical_Right_All,
+        Horizontal_Vertical_Two,
+        Horizontal_Vertical_All,
+        All_Corners
+    }
+
     public class ClothSprite : MonoBehaviour
     {
         public Sprite sprite;
         public bool reverseTexture;
+        public bool useFixedUpdate;
         [Range(4, 16)] public int resolution = 12;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
         [Range(0f, 1f)] public float stiffness = 0.5f;
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
-        public List<int> anchors = new List<int>();
+        public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;
 
 
-        private Wind2D wind2d;
+        private List<int> _anchors = new List<int>();
         private MeshFilter _meshFilter;
         private Mesh _mesh;
         private Material _material;
@@ -57,6 +75,7 @@ namespace Cloth2D
         private float _segmentWidth;
         private float _segmentHeight;
         private int[] _colliderPoints;
+        private Dictionary<int, Vector3> _preCollisionForces = new Dictionary<int, Vector3>();
 
         private int _preSpriteId = -1;
         private int _preResolution;
@@ -70,15 +89,41 @@ namespace Cloth2D
         // Start is called before the first frame update
         void Start()
         {
-            wind2d = FindObjectOfType<Wind2D>();
+            _meshFilter.mesh = _mesh;
             seed = Random.value * 999f;
         }
 
         // Update is called once per frame
         void Update()
         {
-            // UpdateCollider();
-            UpdateCloth(Time.deltaTime);
+            if (!useFixedUpdate)
+            {
+                // UpdateCollider();
+                UpdateCloth(Time.deltaTime);
+            }
+        }
+
+        void FixedUpdate()
+        {
+            if (useFixedUpdate)
+            {
+                UpdateCloth(Time.fixedDeltaTime);
+            }
+        }
+
+        public void OnCollisionEnter2D(Collision2D collision)
+        {
+            // TODO: implement collision
+            foreach (var p in collision.contacts)
+            {
+                Debug.Log(p.point);
+                // int index = FindCloseHitPoint(p.point);
+                // if (!isAnchorVertex(index))
+                // {
+                //     //  _preCollisionForces.Add(index, p.rigidbody.velocity * 1000f);
+                //      Debug.Log(p.rigidbody.velocity);
+                // }
+            }
         }
 
         void OnValidate()
@@ -109,6 +154,7 @@ namespace Cloth2D
             _height = sprite.texture.height / sprite.pixelsPerUnit;
             _collider = GetComponent<PolygonCollider2D>();
 
+            SetAnchors();
             GenerateMesh();
             GenerateSprings();
         }
@@ -195,8 +241,6 @@ namespace Cloth2D
                 }
             }
             _mesh.SetUVs(0, uvs);
-
-            _meshFilter.mesh = _mesh;
         }
 
         private void GenerateSprings()
@@ -320,7 +364,6 @@ namespace Cloth2D
             if (sprite == null || _vertices == null || _springs == null)
                 return;
 
-            // float scaleOffset = stiffness + flexibleScale * (1f - stiffness);
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
 
@@ -344,37 +387,100 @@ namespace Cloth2D
             return positions;
         }
 
+        private void SetAnchors()
+        {
+            _anchors.Clear();
+            switch (mode)
+            {
+                case Cloth2DMode.Top_Left:
+                    _anchors.Add(0);
+                    break;
+                case Cloth2DMode.Top_Right:
+                    _anchors.Add(resolution - 1);
+                    break;
+                case Cloth2DMode.Horizontal_Two:
+                    _anchors.Add(0);
+                    _anchors.Add(resolution - 1);
+                    break;
+                case Cloth2DMode.Horizontal_Three:
+                    _anchors.Add(0);
+                    _anchors.Add((resolution - 1) / 2);
+                    _anchors.Add(resolution - 1);
+                    break;
+                case Cloth2DMode.Horizontal_All:
+                    for (int i = 0; i < resolution; i++)
+                        _anchors.Add(i);
+                    break;
+                case Cloth2DMode.Vertical_Two:
+                    _anchors.Add(0);
+                    _anchors.Add(resolution * (resolution - 1));
+                    break;
+                case Cloth2DMode.Vertical_All:
+                    for (int i = 0; i < resolution; i++)
+                        _anchors.Add(i * resolution);
+                    break;
+                case Cloth2DMode.Vertical_Right_Two:
+                    _anchors.Add(resolution - 1);
+                    _anchors.Add(resolution * resolution - 1);
+                    break;
+                case Cloth2DMode.Vertical_Right_All:
+                    for (int i = 0; i < resolution; i++)
+                        _anchors.Add((i + 1) * resolution - 1);
+                    break;
+                case Cloth2DMode.Horizontal_Vertical_Two:
+                    _anchors.Add(0);
+                    _anchors.Add(resolution - 1);
+                    _anchors.Add(resolution * (resolution - 1));
+                    break;
+                case Cloth2DMode.Horizontal_Vertical_All:
+                    for (int i = 0; i < resolution; i++)
+                        _anchors.Add(i);
+                    for (int i = 1; i < resolution; i++)
+                        _anchors.Add(i * resolution);
+                    break;
+                case Cloth2DMode.All_Corners:
+                    _anchors.Add(0);
+                    _anchors.Add(resolution - 1);
+                    _anchors.Add(resolution * (resolution - 1));
+                    _anchors.Add(resolution * resolution - 1);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         private bool isAnchorVertex(int i)
         {
-            return anchors.Contains(i);
+            return _anchors.Contains(i);
         }
 
         private void ApplyGravity(int i)
         {
-            // _vertices[i].vel.y -= 0.0981f * gravity * dt / sprite.pixelsPerUnit;
             _vertices[i].f.y -= 98.1f * gravity / sprite.pixelsPerUnit;
         }
 
         private void ApplyWinds(int i, float dt)
         {
-            if (wind2d == null)
-                return;
-
-            float wind =  wind2d.GetWind(transform.position);
-            float wet = wetness * 0.25f;
-            
-            Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
-            _vertices[i].f.x += windForce.x * _segmentWidth;
-            _vertices[i].f.y += windForce.y * _segmentHeight;
-            _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentWidth * 10f;
-            _vertices[i].f.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * wind2d.turbulence * _segmentHeight * 10f;
-            
-            if (wetness > 0f)
+            foreach(var wind2d in Wind2DReceiver.GetInstance().Winds)
             {
-                wetness -= wind * dt * drySpeed / 2500f;
-                if (wetness < 0f)
-                    wetness = 0f;
+                float wind =  wind2d.GetWind(transform.position);
+                float turbulence =  wind2d.GetTurbulence(transform.position);
+                float wet = wetness * 0.25f;
+                
+                Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
+                _vertices[i].f.x += windForce.x * _segmentWidth;
+                _vertices[i].f.y += windForce.y * _segmentHeight;
+                _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * turbulence * _segmentWidth * 10f;
+                _vertices[i].f.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * turbulence * _segmentHeight * 10f;
+                
+                if (wetness > 0f)
+                {
+                    wetness -= wind * dt * drySpeed / 2500f;
+                    if (wetness < 0f)
+                        wetness = 0f;
+                }
             }
+
         }
 
         private void ComputeForces(float dt)
@@ -391,6 +497,13 @@ namespace Cloth2D
                 // Dampling
                 _vertices[i].f += -1.25f * _vertices[i].vel;
             }
+
+            // Apply collision
+            foreach (var force in _preCollisionForces)
+            {
+                _vertices[force.Key].f += force.Value;
+            }
+            _preCollisionForces.Clear();
 
             // Add spring forces
             for (int i = 0; i < _springs.Count; i++)
@@ -527,20 +640,6 @@ namespace Cloth2D
                         _vertices[p1].vel -= deltaP;
                         _vertices[p2].vel += deltaP;
                     }
-                }
-            }
-        }
-
-
-        public void OnCollisionEnter2D(Collision2D collision)
-        {
-            // TODO: implement collision
-            foreach (var p in collision.contacts)
-            {
-                int index = FindCloseHitPoint(p.point);
-                if (!isAnchorVertex(index))
-                {
-                    _vertices[index].vel += new Vector3(p.rigidbody.velocity.x, p.rigidbody.velocity.y, 0f);
                 }
             }
         }
