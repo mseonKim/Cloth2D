@@ -8,10 +8,12 @@ namespace Cloth2D
         [SerializeField]
         [Range(0f, 1f)]
         private float _wind = 0.3f; // Vanila wind
-        [Tooltip("Apply attenuation by distance.")]
+        [Tooltip("Apply wind regardless of distance.")]
+        public bool infiniteDistance;
+        [Tooltip("Apply attenuation by distance if InfiniteDistance is disabled.")]
         public bool attenuation;
         [Tooltip("How far the wind could reach.")]
-        [Range(0f, 10000f)] public float maxDistance = 1000f;
+        [Range(0f, 1000f)] public float maxDistance = 100f;
         [SerializeField]
         [Range(0f, 1f)] private float _turbulence = 0.1f;
 
@@ -31,8 +33,10 @@ namespace Cloth2D
 
         public float GetWind(Vector3 pos)
         {
+            if (infiniteDistance)
+                return _wind;
+
             float dist = (transform.position - pos).magnitude;
-            
             if (dist > maxDistance)
                 return 0f;
 
@@ -44,8 +48,10 @@ namespace Cloth2D
 
         public float GetTurbulence(Vector3 pos)
         {
+            if (infiniteDistance)
+                return _wind;
+
             float dist = (transform.position - pos).magnitude;
-            
             if (dist > maxDistance)
                 return 0f;
 
@@ -74,6 +80,15 @@ namespace Cloth2D
             }
             
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!infiniteDistance)
+            {
+                Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
+                Gizmos.DrawWireSphere(transform.position, maxDistance);
+            }
         }
     }
 }

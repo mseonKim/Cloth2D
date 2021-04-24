@@ -75,7 +75,6 @@ namespace Cloth2D
         private float _segmentWidth;
         private float _segmentHeight;
         private int[] _colliderPoints;
-        private Dictionary<int, Vector3> _preCollisionForces = new Dictionary<int, Vector3>();
 
         private int _preSpriteId = -1;
         private int _preResolution;
@@ -98,7 +97,7 @@ namespace Cloth2D
         {
             if (!useFixedUpdate)
             {
-                // UpdateCollider();
+                UpdateCollider();
                 UpdateCloth(Time.deltaTime);
             }
         }
@@ -111,21 +110,18 @@ namespace Cloth2D
             }
         }
 
-        public void OnCollisionEnter2D(Collision2D collision)
+        public void OnTriggerStay2D(Collider2D collider)
         {
-            ContactPoint2D[] contactPoints = null;
-            collision.GetContacts(contactPoints);
             // TODO: implement collision
-            foreach (var p in contactPoints)
+            for (int i = 0; i < _vertices.Length; i++)
             {
-                Debug.Log(p.point);
-                // int index = FindCloseHitPoint(p.point);
-                // if (!isAnchorVertex(index))
-                // {
-                //     //  _preCollisionForces.Add(index, p.rigidbody.velocity * 1000f);
-                //      Debug.Log(p.rigidbody.velocity);
-                // }
+                if (collider.bounds.Contains(_vertices[i].pos))
+                {
+                    _vertices[i].pos = collider.ClosestPoint(_vertices[i].pos);
+                    Debug.Log(i);
+                }
             }
+            _mesh.SetVertices(GetVertexPositions());
         }
 
         void OnValidate()
@@ -368,6 +364,12 @@ namespace Cloth2D
             if (sprite == null || _vertices == null || _springs == null)
                 return;
 
+            // Prevent large time step while selecting other gameobject in editor.
+#if UNITY_EDITOR
+            if (dt > 0.011f)
+                dt = 0.011f;
+#endif
+
             ComputeForces(dt);
             IntegrateMidPointEuler(dt);
             // IntegrateRK4(dt);
@@ -497,13 +499,6 @@ namespace Cloth2D
                 _vertices[i].f += -1.25f * _vertices[i].vel;
             }
 
-            // Apply collision
-            foreach (var force in _preCollisionForces)
-            {
-                _vertices[force.Key].f += force.Value;
-            }
-            _preCollisionForces.Clear();
-
             // Add spring forces
             for (int i = 0; i < _springs.Count; i++)
             {
@@ -516,9 +511,9 @@ namespace Cloth2D
                 float rightTerm = -s.kd * (Vector3.Dot(deltaV, deltaV) / dist);
                 Vector3 springForce = (leftTerm + rightTerm) * deltaP.normalized;
 
-                float maxForce = Mathf.Max(_segmentWidth, _segmentHeight);
-                if (springForce.magnitude > maxForce)
-                    springForce = springForce.normalized * maxForce;
+                // float maxForce = Mathf.Max(_segmentWidth, _segmentHeight);
+                // if (springForce.magnitude > maxForce)
+                //     springForce = springForce.normalized * maxForce;
 
                 if (!isAnchorVertex(s.p1))
                     _vertices[s.p1].f += springForce;

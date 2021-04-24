@@ -32,7 +32,7 @@ namespace Cloth2D.EditorUtility
         [MenuItem("GameObject/2D Object/2D Wind", false)]
         static void CreateWind2D(MenuCommand menuCommand)
         {
-            GameObject go = new GameObject("2D Wind");
+            GameObject go = new GameObject("Wind 2D");
             go.AddComponent<Wind2D>();
             GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
             Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
