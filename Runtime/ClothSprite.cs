@@ -75,6 +75,7 @@ namespace Cloth2D
         private float _segmentWidth;
         private float _segmentHeight;
         private int[] _colliderPoints;
+        private float _rad;
 
         private int _preSpriteId = -1;
         private int _preResolution;
@@ -82,7 +83,10 @@ namespace Cloth2D
 
         void Awake()
         {
+            _rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            transform.rotation = Quaternion.identity;
             Initialize();
+            transform.localScale = Vector3.one;
         }
 
         // Start is called before the first frame update
@@ -148,8 +152,8 @@ namespace Cloth2D
             if (sprite == null)
                 return;
 
-            _width = sprite.texture.width / sprite.pixelsPerUnit;
-            _height = sprite.texture.height / sprite.pixelsPerUnit;
+            _width = sprite.texture.width * transform.localScale.x / sprite.pixelsPerUnit;
+            _height = sprite.texture.height * transform.localScale.y / sprite.pixelsPerUnit;
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
             _collider = GetComponent<PolygonCollider2D>();
@@ -195,9 +199,11 @@ namespace Cloth2D
             _vertices = new Vertex[length];
             for (int i = 0; i < length; i++)
             {
-                _vertices[i].pos = new Vector3(_width / offset * (i % resolution), -_height / offset * (i / resolution), 0f);
+                Vector3 newPos = new Vector3(_width / offset * (i % resolution), -_height / offset * (i / resolution), 0f);
+                _vertices[i].pos = newPos;
                 _vertices[i].vel = Vector3.zero;
                 _vertices[i].f = Vector3.zero;
+                RotateVector(ref _vertices[i].pos, _rad);
             }
             _mesh.SetVertices(GetVertexPositions());
 
@@ -230,17 +236,27 @@ namespace Cloth2D
             if (reverseTexture)
             {
                 for (int i = 0; i < length; i++)
-                    uvs.Add(new Vector2(_vertices[i].pos.x / _width, - _vertices[i].pos.y / _height));
+                    uvs.Add(new Vector2((i % resolution) / offset, (i / resolution) / offset));
             }
             else
             {
                 for (int i = resolution - 1; i >= 0; i--)
                 {
                     for (int i2 = 0; i2 < resolution; i2++)
-                        uvs.Add(new Vector2(_vertices[i * resolution + i2].pos.x / _width, - _vertices[i * resolution + i2].pos.y / _height));
+                        uvs.Add(new Vector2((float)i2 / offset, (float)i / offset)); // _vertices[i * resolution + i2].pos / (width, -height)
                 }
             }
             _mesh.SetUVs(0, uvs);
+        }
+
+        private void RotateVector(ref Vector3 pos, float rad)
+        {
+            float sin = Mathf.Sin(rad);
+            float cos = Mathf.Cos(rad);
+            float x = cos * pos.x + -sin * pos.y;
+            float y = sin * pos.x + cos * pos.y;
+            pos.x = x;
+            pos.y = y;
         }
 
         private void GenerateSprings()
@@ -660,19 +676,18 @@ namespace Cloth2D
                 return;
 
             Gizmos.color = new Color(0f, 1f, 1f, 0.3f);
+            Vector3 curPos = transform.position;
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Vector3 curPos = transform.position;
-                Vector3 scale = transform.localScale;
-                Gizmos.DrawWireCube(curPos + Vector3.Scale(_vertices[i].pos, scale) , Vector3.one * 0.05f);
+                Gizmos.DrawWireCube(curPos + _vertices[i].pos , Vector3.one * 0.05f);
                 if (i % resolution < resolution - 1)
                 {
-                    Gizmos.DrawLine(curPos + Vector3.Scale(_vertices[i].pos, scale), curPos + Vector3.Scale(_vertices[i + 1].pos, scale));
+                    Gizmos.DrawLine(curPos + _vertices[i].pos, curPos + _vertices[i + 1].pos);
                     if (i < _vertices.Length - resolution)
                     {
-                        Gizmos.DrawLine(curPos + Vector3.Scale(_vertices[i].pos, scale), curPos + Vector3.Scale(_vertices[i + resolution].pos, scale));
-                        Gizmos.DrawLine(curPos + Vector3.Scale(_vertices[i + 1].pos, scale), curPos + Vector3.Scale(_vertices[i + resolution].pos, scale));
-                        Gizmos.DrawLine(curPos + Vector3.Scale(_vertices[i + 1].pos, scale), curPos + Vector3.Scale(_vertices[i + resolution + 1].pos, scale));
+                        Gizmos.DrawLine(curPos + _vertices[i].pos, curPos +_vertices[i + resolution].pos);
+                        Gizmos.DrawLine(curPos + _vertices[i + 1].pos, curPos + _vertices[i + resolution].pos);
+                        Gizmos.DrawLine(curPos + _vertices[i + 1].pos, curPos + _vertices[i + resolution + 1].pos);
                     }
                 }
             }
