@@ -50,12 +50,16 @@ namespace Cloth2D
     public class ClothSprite : MonoBehaviour
     {
         public Sprite sprite;
+        [Tooltip("Turn texture upside down.")]
         public bool reverseTexture;
+        [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate;
+        [Tooltip("How many segments will be. The higher resolution the less performance.")]
         [Range(4, 16)] public int resolution = 12;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
         [Range(0f, 1f)] public float stiffness = 0.5f;
+        [Tooltip("Wetness will reduce the effect of wind. This will be decreased by wind X drySpeed at runtime.")]
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
         public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;

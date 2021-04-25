@@ -9,8 +9,9 @@ This package contains 2D Cloth and 2D Wind to support multiple clothes with wind
 Support multiple clothes. Consider which resolution is the best option for your game performance.
 
 ### NOTE
-If you rotate or scale 2d cloth, note that they will apply original values to the cloth and automatically update the rotation & scale in the editor to default at run-time(play mode).
-The original values(rotation, scale) in the editor will be restored once you quit play mode.
+If you rotate or scale 2d cloth, note that they will apply original values to the cloth and automatically update the rotation & scale in the editor to default at runtime(play mode).
+<br>
+The original values(rotation, scale) in the editor which you modified will be restored once you quit play mode.
 
 
 ## Wind2D

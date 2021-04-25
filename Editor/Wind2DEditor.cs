@@ -2,6 +2,7 @@ using UnityEditor;
 
 namespace Cloth2D.EditorUtility
 {
+    [CanEditMultipleObjects]
     [CustomEditor(typeof(Wind2D))]
     public class Wind2DEditor: Editor
     {
@@ -36,8 +37,5 @@ namespace Cloth2D.EditorUtility
 
             serializedObject.ApplyModifiedProperties();
         }
-
-
     }
-
 }
