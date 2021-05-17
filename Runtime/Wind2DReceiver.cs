@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,14 +8,10 @@ namespace Cloth2D
     {
         public Dictionary<int, Wind2D> Winds { get; private set; }
 
-        private static class InnerWind2DReceiverInstance
-        {
-            public static Wind2DReceiver instance = new Wind2DReceiver();
-        }
-
+        private static readonly Lazy<Wind2DReceiver> instance = new Lazy<Wind2DReceiver>(() => new Wind2DReceiver());
         public static Wind2DReceiver GetInstance()
         {
-            return InnerWind2DReceiverInstance.instance;
+            return instance.Value;
         }
 
         private Wind2DReceiver()
@@ -32,7 +28,7 @@ namespace Cloth2D
             }
         }
 
-        public void UnRegisterWind(int guid)
+        public void UnregisterWind(int guid)
         {
             Winds.Remove(guid);
         }

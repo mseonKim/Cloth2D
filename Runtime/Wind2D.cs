@@ -10,7 +10,7 @@ namespace Cloth2D
         private float _wind = 0.3f; // Vanila wind
         [Tooltip("Apply wind regardless of distance.")]
         public bool infiniteDistance;
-        [Tooltip("Apply attenuation by distance if InfiniteDistance is disabled.")]
+        [Tooltip("Apply linear attenuation by distance if InfiniteDistance is disabled.")]
         public bool attenuation;
         [Tooltip("How far the wind could reach.")]
         [Range(0f, 1000f)] public float maxDistance = 100f;
@@ -63,7 +63,7 @@ namespace Cloth2D
 
         void OnDisable()
         {
-            Wind2DReceiver.GetInstance().UnRegisterWind(this.gameObject.GetInstanceID());
+            Wind2DReceiver.GetInstance().UnregisterWind(this.gameObject.GetInstanceID());
         }
 
         private void OnDrawGizmos()

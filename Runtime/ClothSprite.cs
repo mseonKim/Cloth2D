@@ -16,7 +16,7 @@ namespace Cloth2D
     {
         public int p1;
         public int p2;
-        public float ks;
+        public float ks; 
         public float kd;
         public float restLength;
 
@@ -49,6 +49,7 @@ namespace Cloth2D
 
     public class ClothSprite : MonoBehaviour
     {
+        public const string clothTag = "Cloth2D";
         public Sprite sprite;
         [Tooltip("Turn texture upside down.")]
         public bool reverseTexture;
@@ -66,6 +67,7 @@ namespace Cloth2D
 
 
         private List<int> _anchors = new List<int>();
+        private Transform _transform;
         private MeshFilter _meshFilter;
         private Mesh _mesh;
         private Material _material;
@@ -87,10 +89,9 @@ namespace Cloth2D
 
         void Awake()
         {
-            _rad = transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
-            transform.rotation = Quaternion.identity;
             Initialize();
-            transform.localScale = Vector3.one;
+            _transform.rotation = Quaternion.identity;
+            _transform.localScale = Vector3.one;
         }
 
         // Start is called before the first frame update
@@ -118,18 +119,14 @@ namespace Cloth2D
             }
         }
 
+        public void OnTriggerEnter2D(Collider2D collider)
+        {
+            ApplyCollision(collider);
+        }
+
         public void OnTriggerStay2D(Collider2D collider)
         {
-            // TODO: implement collision
-            for (int i = 0; i < _vertices.Length; i++)
-            {
-                if (collider.bounds.Contains(_vertices[i].pos))
-                {
-                    _vertices[i].pos = collider.ClosestPoint(_vertices[i].pos);
-                    Debug.Log(i);
-                }
-            }
-            _mesh.SetVertices(GetVertexPositions());
+            ApplyCollision(collider);
         }
 
         void OnValidate()
@@ -144,7 +141,7 @@ namespace Cloth2D
                 }
                 return;
             }
-                
+            
             if (_preResolution != resolution || _preSpriteId != sprite.GetInstanceID())
             {
                 Initialize();
@@ -156,8 +153,10 @@ namespace Cloth2D
             if (sprite == null)
                 return;
 
-            _width = sprite.texture.width * transform.localScale.x / sprite.pixelsPerUnit;
-            _height = sprite.texture.height * transform.localScale.y / sprite.pixelsPerUnit;
+            _transform = transform;
+            _rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            _width = sprite.texture.width * _transform.localScale.x / sprite.pixelsPerUnit;
+            _height = sprite.texture.height * _transform.localScale.y / sprite.pixelsPerUnit;
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
             _collider = GetComponent<PolygonCollider2D>();
@@ -333,11 +332,11 @@ namespace Cloth2D
             if (_collider == null || !_collider.enabled)
                 return;
 
-            if (_vertices == null)
-                return;
+            // if (_vertices == null)
+            //     return;
 
             _collider.pathCount = 1;
-            Vector2[] points = new Vector2[12];
+            Vector2[] points = new Vector2[17];
 
             if (_colliderPoints == null)
                 SetColliderPoints();
@@ -352,7 +351,7 @@ namespace Cloth2D
 
         private void SetColliderPoints()
         {
-            _colliderPoints = new int[12];
+            _colliderPoints = new int[17];
             int index;
             int sqr = resolution * resolution;
 
@@ -376,6 +375,12 @@ namespace Cloth2D
                 index = (sqr - resolution) * (12 - i) / 3;
                 _colliderPoints[i] = FindCloseColliderPoint(index);
             }
+
+            _colliderPoints[12] = _colliderPoints[11] + resolution / 3;
+            _colliderPoints[13] = _colliderPoints[4] - resolution / 3;
+            _colliderPoints[14] = _colliderPoints[5] - resolution / 3;
+            _colliderPoints[15] = _colliderPoints[10] + resolution / 3;
+            _colliderPoints[16] = _colliderPoints[11];
         }
 
 
@@ -386,8 +391,8 @@ namespace Cloth2D
 
             // Prevent large time step while selecting other gameobject in editor.
 #if UNITY_EDITOR
-            if (dt > 0.011f)
-                dt = 0.011f;
+            if (dt > 0.0167f)
+                dt = 0.0167f;
 #endif
 
             ComputeForces(dt);
@@ -485,8 +490,8 @@ namespace Cloth2D
         {
             foreach(var wind2d in Wind2DReceiver.GetInstance().Winds.Values)
             {
-                float wind =  wind2d.GetWind(transform.position);
-                float turbulence =  wind2d.GetTurbulence(transform.position);
+                float wind =  wind2d.GetWind(_transform.position);
+                float turbulence =  wind2d.GetTurbulence(_transform.position);
                 float wet = wetness * 0.25f;
                 
                 Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
@@ -653,24 +658,76 @@ namespace Cloth2D
             return (mod < resolution / 2) ? i - mod : i + (resolution - mod);
         }
 
-        private int FindCloseHitPoint(Vector2 contactPos)
+        private void ApplyCollision(Collider2D collider)
         {
-            int point = 0;
-            float min = (_collider.points[0] - contactPos).magnitude;
-
-            // Find close point from collider
-            for (int i = 1; i < _collider.points.Length; i++)
+            Vector3 targetV;
+            Vector3 worldPos;
+            if (collider.CompareTag(ClothSprite.clothTag))
             {
-                float current = (_collider.points[i] * transform.localScale - contactPos).magnitude;
-                if (current < min)
+                for (int i = 0; i < _vertices.Length; i++)
                 {
-                    min = current;
-                    point = i;
+                    worldPos = _transform.position + _vertices[i].pos;
+                    if (!isAnchorVertex(i) && collider.OverlapPoint(worldPos))
+                    {
+                        targetV = _collider.bounds.center - worldPos;
+                        _vertices[i].vel = targetV;
+                    }
                 }
+                return;
             }
 
-            // Find mesh index from point.
-            return _colliderPoints[point];
+            /**
+             *  <Step>
+             *  1.  Check rigidbody's velocity
+             *  2.  targetV <- vertex.vel + rigidbody.vel
+             *        if kinematic, use estimated deltaV instead of rigidbody.vel
+             *  3.  Interpolate targetV after checking forthV dot targetV
+             *        if dot < 0, targetV <- targetV + forthV + (clothOriginV)
+             *  4.  vertex.vel <- targetV
+             */
+            for (int i = 0; i < _vertices.Length; i++)
+            {
+                worldPos = _transform.position + _vertices[i].pos;
+                if (!isAnchorVertex(i) && collider.OverlapPoint(worldPos))
+                {
+                    Vector3 otherVelocity = collider.attachedRigidbody.velocity;
+                    if (collider.attachedRigidbody.bodyType == RigidbodyType2D.Kinematic)
+                    {
+                        otherVelocity += (_collider.bounds.center - collider.bounds.center);
+                    }
+                    targetV = _vertices[i].vel + otherVelocity;
+
+                    Vector3 direction = targetV.normalized;
+                    Vector3 forthV = (worldPos - collider.bounds.center).normalized;
+                    if (Vector3.Dot(direction, forthV) < 0f)
+                    {
+                        Vector3 targetDirection = (direction + forthV + (_collider.bounds.center - worldPos).normalized);
+                        targetV.x = Mathf.Abs(targetV.x) * targetDirection.x;
+                        targetV.y = Mathf.Abs(targetV.y) * targetDirection.y;
+                    }
+                    else
+                    {
+                        if (Mathf.Sign(targetV.x) != Mathf.Sign(forthV.x))
+                        {
+                            targetV.x *= -1f;
+                        }
+                        if (Mathf.Sign(targetV.y) != Mathf.Sign(forthV.y))
+                        {
+                            targetV.y *= -1f;
+                        }
+                    }
+
+                    float maxLimit = 100f / sprite.pixelsPerUnit;
+                    if (targetV.sqrMagnitude < maxLimit * maxLimit)
+                    {
+                        _vertices[i].vel = targetV;
+                    }
+                    else
+                    {
+                        _vertices[i].vel = targetV * 0.5f;
+                    }
+                }
+            }
         }
 
 
@@ -680,7 +737,7 @@ namespace Cloth2D
                 return;
 
             Gizmos.color = new Color(0f, 1f, 1f, 0.3f);
-            Vector3 curPos = transform.position;
+            Vector3 curPos = _transform.position;
             for (int i = 0; i < _vertices.Length; i++)
             {
                 Gizmos.DrawWireCube(curPos + _vertices[i].pos , Vector3.one * 0.05f);
