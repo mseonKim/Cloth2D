@@ -97,7 +97,7 @@ namespace Cloth2D
         // Start is called before the first frame update
         void Start()
         {
-            _meshFilter.mesh = _mesh;
+            _meshFilter.sharedMesh = _mesh;
             seed = Random.value * 999f;
         }
 
@@ -136,19 +136,20 @@ namespace Cloth2D
                 if (_preSpriteId != -1)
                 {
                     _preSpriteId = -1;
-                    _meshFilter.mesh = new Mesh();
                     _vertices = null;
+                    UnityEditor.EditorApplication.delayCall += () => _meshFilter.mesh = new Mesh();
                 }
                 return;
             }
             
             if (_preResolution != resolution || _preSpriteId != sprite.GetInstanceID())
             {
-                Initialize();
+                Initialize(true);
+                UnityEditor.EditorApplication.delayCall += () => _meshFilter.mesh = _mesh;
             }
         }
 
-        private void Initialize()
+        private void Initialize(bool isOnValidate = false)
         {
             if (sprite == null)
                 return;
@@ -157,6 +158,14 @@ namespace Cloth2D
             _rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
             _width = sprite.texture.width * _transform.localScale.x / sprite.pixelsPerUnit;
             _height = sprite.texture.height * _transform.localScale.y / sprite.pixelsPerUnit;
+#if UNITY_EDITOR
+            if (isOnValidate)
+            {
+                _rad = 0f;
+                _width = sprite.texture.width / sprite.pixelsPerUnit;
+                _height = sprite.texture.height / sprite.pixelsPerUnit;
+            }
+#endif
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
             _collider = GetComponent<PolygonCollider2D>();
@@ -750,20 +759,34 @@ namespace Cloth2D
             Vector3 curPos = _transform.position;
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Gizmos.DrawWireCube(curPos + _vertices[i].pos , Vector3.one * 0.05f);
+                Vector3 curVPos = curPos + TransformVector(_vertices[i].pos, _transform.localScale);
+                Gizmos.DrawWireCube(curVPos, Vector3.one * 0.05f);
                 if (i % resolution < resolution - 1)
                 {
-                    Gizmos.DrawLine(curPos + _vertices[i].pos, curPos + _vertices[i + 1].pos);
+                    Vector3 rightVPos = curPos + TransformVector(_vertices[i + 1].pos, _transform.localScale);
+                    Gizmos.DrawLine(curVPos, rightVPos);
                     if (i < _vertices.Length - resolution)
                     {
-                        Gizmos.DrawLine(curPos + _vertices[i].pos, curPos +_vertices[i + resolution].pos);
-                        Gizmos.DrawLine(curPos + _vertices[i + 1].pos, curPos + _vertices[i + resolution].pos);
-                        Gizmos.DrawLine(curPos + _vertices[i + 1].pos, curPos + _vertices[i + resolution + 1].pos);
+                        Vector3 downVPos = curPos + TransformVector(_vertices[i + resolution].pos, _transform.localScale);
+                        Vector3 diagonalVPos = curPos + TransformVector(_vertices[i + resolution + 1].pos, _transform.localScale);
+                        Gizmos.DrawLine(curVPos, downVPos);
+                        Gizmos.DrawLine(rightVPos, downVPos);
+                        Gizmos.DrawLine(rightVPos, diagonalVPos);
                     }
                 }
             }
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
         }
+
+#if UNITY_EDITOR
+        private Vector3 TransformVector(in Vector3 v, in Vector3 scale)
+        {
+            float rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            Vector3 vector = new Vector3(v.x * scale.x, v.y * scale.y, v.z);
+            RotateVector(ref vector, rad);
+            return vector;
+        }
+#endif
 
     }
 }
