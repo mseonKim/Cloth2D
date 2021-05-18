@@ -63,7 +63,9 @@ namespace Cloth2D
         [Tooltip("Wetness will reduce the effect of wind. This will be decreased by wind X drySpeed at runtime.")]
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
+        [Tooltip("Anchors will be set by mode.")]
         public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;
+        [Tooltip("How much the collision will affect.")]
         [Range(1f, 3f)] public float collisionResponse = 1.2f;
 
         private List<int> _anchors = new List<int>();
@@ -179,12 +181,12 @@ namespace Cloth2D
         private void GenerateMesh()
         {
             /**
-            * @example - 4x4
-            *  P0  P1  P2  P3
-            *  P4  P5  P6  P7
-            *  P8  P9  P10 P11
-            *  P12 P13 P14 P15
-            */
+             * @example - 4x4
+             *  P0  P1  P2  P3
+             *  P4  P5  P6  P7
+             *  P8  P9  P10 P11
+             *  P12 P13 P14 P15
+             */
 
             if (sprite == null)
                 return;
