@@ -4,7 +4,7 @@ The 2D cloth system for Unity. Use _"2D Object -> 2D Cloth"_ to create new cloth
 This package contains 2D Cloth and 2D Wind to support multiple clothes with wind system.
 
 ## Cloth2D
-![image](https://user-images.githubusercontent.com/12474900/115981297-9ca6fc00-a5cd-11eb-9356-57743bc798c7.png)
+![image](https://user-images.githubusercontent.com/12474900/118684370-1e8cec80-b83d-11eb-8826-75f085867fde.png)
 <br>
 Support multiple clothes. Consider which resolution is the best option for your game performance.
 The collision only supports kinematic or dynamic rigidbody.
