@@ -51,8 +51,8 @@ namespace Cloth2D
     {
         public const string clothTag = "Cloth2D";
         public Sprite sprite;
-        [Tooltip("Turn texture upside down.")]
-        public bool reverseTexture;
+        [Tooltip("Flip texture vertically.")]
+        public bool flipTexture;
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate;
         [Tooltip("How many segments will be. The higher resolution the less performance.")]
@@ -64,7 +64,7 @@ namespace Cloth2D
         [Range(0f, 1f)] public float wetness = 0f;
         [Range(0f, 10f)] public float drySpeed = 1f;
         public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;
-
+        [Range(1f, 3f)] public float collisionResponse = 1.2f;
 
         private List<int> _anchors = new List<int>();
         private Transform _transform;
@@ -236,7 +236,7 @@ namespace Cloth2D
 
             // Set UVs
             List<Vector2> uvs = new List<Vector2>(length);
-            if (reverseTexture)
+            if (flipTexture)
             {
                 for (int i = 0; i < length; i++)
                     uvs.Add(new Vector2((i % resolution) / offset, (i / resolution) / offset));
@@ -329,7 +329,7 @@ namespace Cloth2D
 
         private void UpdateCollider()
         {
-            if (_collider == null || !_collider.enabled)
+            if (!_collider.enabled)
                 return;
 
             // if (_vertices == null)
@@ -386,8 +386,11 @@ namespace Cloth2D
 
         private void UpdateCloth(float dt)
         {
-            if (sprite == null || _vertices == null || _springs == null)
+            if (sprite == null)
                 return;
+
+            // if (_vertices == null || _springs == null)
+            //     return;
 
             // Prevent large time step while selecting other gameobject in editor.
 #if UNITY_EDITOR
@@ -551,10 +554,13 @@ namespace Cloth2D
         {
             float dtMass = dt / mass;
             int i = 0;
+            float maxLimit = 100f / sprite.pixelsPerUnit * 3f;
 
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass / 2f;
+                if (_vertices[i].vel.sqrMagnitude > maxLimit * maxLimit)
+                    _vertices[i].vel = _vertices[i].vel.normalized * maxLimit;
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
 
@@ -563,6 +569,8 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass;
+                if (_vertices[i].vel.sqrMagnitude > maxLimit * maxLimit)
+                    _vertices[i].vel = _vertices[i].vel.normalized * maxLimit;
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
         }
@@ -670,6 +678,7 @@ namespace Cloth2D
                     if (!isAnchorVertex(i) && collider.OverlapPoint(worldPos))
                     {
                         targetV = _collider.bounds.center - worldPos;
+                        ClampTargetVelocity(ref targetV);
                         _vertices[i].vel = targetV;
                     }
                 }
@@ -678,12 +687,12 @@ namespace Cloth2D
 
             /**
              *  <Step>
-             *  1.  Check rigidbody's velocity
+             *  1.  Check rigidbody's velocity.
              *  2.  targetV <- vertex.vel + rigidbody.vel
-             *        if kinematic, use estimated deltaV instead of rigidbody.vel
-             *  3.  Interpolate targetV after checking forthV dot targetV
+             *        if kinematic, use estimated deltaV together.
+             *  3.  Interpolate targetV after checking forthV dot targetV.
              *        if dot < 0, targetV <- targetV + forthV + (clothOriginV)
-             *  4.  vertex.vel <- targetV
+             *  4.  Clamp targetV & vertex.vel <- targetV
              */
             for (int i = 0; i < _vertices.Length; i++)
             {
@@ -717,19 +726,20 @@ namespace Cloth2D
                         }
                     }
 
-                    float maxLimit = 100f / sprite.pixelsPerUnit;
-                    if (targetV.sqrMagnitude < maxLimit * maxLimit)
-                    {
-                        _vertices[i].vel = targetV;
-                    }
-                    else
-                    {
-                        _vertices[i].vel = targetV * 0.5f;
-                    }
+                    ClampTargetVelocity(ref targetV);
+                    _vertices[i].vel = targetV;
                 }
             }
         }
 
+        private void ClampTargetVelocity(ref Vector3 targetV)
+        {
+            float maxLimit = 100f / sprite.pixelsPerUnit * collisionResponse;
+            if (targetV.sqrMagnitude > maxLimit * maxLimit)
+            {
+                targetV = targetV.normalized * maxLimit;
+            }
+        }
 
         private void OnDrawGizmosSelected()
         {

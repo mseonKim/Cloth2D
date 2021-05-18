@@ -6,7 +6,7 @@ namespace Cloth2D.EditorUtility
     public struct ClothSpriteSettings
     {
         public bool isCopied;
-        public bool reverseTexture;
+        public bool flipTexture;
         public bool useFixedUpdate;
         public int resolution;
         public float gravity;
@@ -15,6 +15,7 @@ namespace Cloth2D.EditorUtility
         public float wetness;
         public float drySpeed;
         public int mode;
+        public float collisionResponse;
     }
 
     [CanEditMultipleObjects]
@@ -23,7 +24,7 @@ namespace Cloth2D.EditorUtility
     {
         public static ClothSpriteSettings copiedSettings;
         SerializedProperty sprite;
-        SerializedProperty reverseTexture;
+        SerializedProperty flipTexture;
         SerializedProperty useFixedUpdate;
         SerializedProperty resolution;
         SerializedProperty gravity;
@@ -32,13 +33,14 @@ namespace Cloth2D.EditorUtility
         SerializedProperty wetness;
         SerializedProperty drySpeed;
         SerializedProperty mode;
+        SerializedProperty collisionResponse;
         private bool showAdditionalGroup;
 
 
         void OnEnable()
         {
             sprite = serializedObject.FindProperty("sprite");
-            reverseTexture = serializedObject.FindProperty("reverseTexture");
+            flipTexture = serializedObject.FindProperty("flipTexture");
             useFixedUpdate = serializedObject.FindProperty("useFixedUpdate");
             resolution = serializedObject.FindProperty("resolution");
             gravity = serializedObject.FindProperty("gravity");
@@ -47,6 +49,7 @@ namespace Cloth2D.EditorUtility
             wetness = serializedObject.FindProperty("wetness");
             drySpeed = serializedObject.FindProperty("drySpeed");
             mode = serializedObject.FindProperty("mode");
+            collisionResponse = serializedObject.FindProperty("collisionResponse");
         }
 
         public override void OnInspectorGUI()
@@ -60,12 +63,13 @@ namespace Cloth2D.EditorUtility
             EditorGUILayout.PropertyField(gravity);
             EditorGUILayout.PropertyField(mass);
             EditorGUILayout.PropertyField(stiffness);
+            EditorGUILayout.PropertyField(collisionResponse);
 
             showAdditionalGroup = EditorGUILayout.Foldout(showAdditionalGroup, "Additional Settings");
             if (showAdditionalGroup)
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.PropertyField(reverseTexture);
+                EditorGUILayout.PropertyField(flipTexture);
                 EditorGUILayout.PropertyField(wetness);
                 EditorGUILayout.PropertyField(drySpeed);
                 EditorGUI.indentLevel--;
@@ -99,7 +103,7 @@ namespace Cloth2D.EditorUtility
         private void CopySettings()
         {
             copiedSettings.isCopied = true;
-            copiedSettings.reverseTexture = reverseTexture.boolValue;
+            copiedSettings.flipTexture = flipTexture.boolValue;
             copiedSettings.useFixedUpdate = useFixedUpdate.boolValue;
             copiedSettings.resolution = resolution.intValue;
             copiedSettings.gravity = gravity.floatValue;
@@ -108,11 +112,12 @@ namespace Cloth2D.EditorUtility
             copiedSettings.wetness = wetness.floatValue;
             copiedSettings.drySpeed = drySpeed.floatValue;
             copiedSettings.mode = mode.enumValueIndex;
+            copiedSettings.collisionResponse = collisionResponse.floatValue;
         }
 
         private void PasteSettings()
         {
-            reverseTexture.boolValue = copiedSettings.reverseTexture;
+            flipTexture.boolValue = copiedSettings.flipTexture;
             useFixedUpdate.boolValue = copiedSettings.useFixedUpdate;
             resolution.intValue = copiedSettings.resolution;
             gravity.floatValue = copiedSettings.gravity;
@@ -121,6 +126,7 @@ namespace Cloth2D.EditorUtility
             wetness.floatValue = copiedSettings.wetness;
             drySpeed.floatValue = copiedSettings.drySpeed;
             mode.enumValueIndex = copiedSettings.mode;
+            collisionResponse.floatValue = copiedSettings.collisionResponse;
         }
     }
 }
