@@ -66,7 +66,7 @@ namespace Cloth2D
         [Tooltip("Anchors will be set by mode.")]
         public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;
         [Tooltip("How much the collision will affect.")]
-        [Range(1f, 3f)] public float collisionResponse = 1.2f;
+        [Range(1f, 5f)] public float collisionResponse = 1.2f;
 
         private List<int> _anchors = new List<int>();
         private Transform _transform;
@@ -77,14 +77,15 @@ namespace Cloth2D
 
         private Vertex[] _vertices;
         private List<Spring> _springs;
+        private Vector3[] _positions;
         private float _width;
         private float _height;
-        private float seed;
+        private float _seed;
         private float _segmentWidth;
         private float _segmentHeight;
-        private int[] _colliderPoints;
+        private Vector2[] _colliderPoints;
+        private int[] _colliderIndexPoints;
         private float _rad;
-
         private int _preSpriteId = -1;
         private int _preResolution;
 
@@ -100,7 +101,7 @@ namespace Cloth2D
         void Start()
         {
             _meshFilter.sharedMesh = _mesh;
-            seed = Random.value * 999f;
+            _seed = Random.value * 999f;
         }
 
         // Update is called once per frame
@@ -194,6 +195,7 @@ namespace Cloth2D
             // Set values
             _preResolution = resolution;
             _preSpriteId = sprite.GetInstanceID();
+            _positions = new Vector3[resolution * resolution];
 
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
@@ -219,7 +221,8 @@ namespace Cloth2D
                 _vertices[i].f = Vector3.zero;
                 RotateVector(ref _vertices[i].pos, _rad);
             }
-            _mesh.SetVertices(GetVertexPositions());
+            SetVertexPositions(_positions);
+            _mesh.SetVertices(_positions);
 
             // Set Triangles
             List<int> tris = new List<int>(offset * offset * 6);
@@ -340,58 +343,59 @@ namespace Cloth2D
 
         private void UpdateCollider()
         {
-            if (!_collider.enabled)
+            if (_collider == null || !_collider.enabled)
                 return;
 
             // if (_vertices == null)
             //     return;
 
             _collider.pathCount = 1;
-            Vector2[] points = new Vector2[17];
-
             if (_colliderPoints == null)
+            {
+                _colliderPoints = new Vector2[17];
                 SetColliderPoints();
+            }
 
             for (int i = 0; i < _colliderPoints.Length; i++)
             {
-                points[i] = _vertices[_colliderPoints[i]].pos;
+                _colliderPoints[i] = _vertices[_colliderIndexPoints[i]].pos;
             }
 
-            _collider.points = points;
+            _collider.points = _colliderPoints;
         }
 
         private void SetColliderPoints()
         {
-            _colliderPoints = new int[17];
+            _colliderIndexPoints = new int[17];
             int index;
             int sqr = resolution * resolution;
 
             for (int i = 0; i < 3; i++)
             {
                 index = resolution * i / 3;
-                _colliderPoints[i] = index;
+                _colliderIndexPoints[i] = index;
             }
             for (int i = 3; i < 7; i++)
             {
                 index = (sqr - 1) - (sqr - resolution) * (6 - i) / 3; 
-                _colliderPoints[i] = FindCloseColliderPoint(index) - 1;
+                _colliderIndexPoints[i] = FindCloseColliderPoint(index) - 1;
             }
             for (int i = 7; i < 10; i++)
             {
                 index = sqr - resolution + resolution * (9 - i) / 3;
-                _colliderPoints[i] = index;
+                _colliderIndexPoints[i] = index;
             }
             for (int i = 10; i < 12; i++)
             {
                 index = (sqr - resolution) * (12 - i) / 3;
-                _colliderPoints[i] = FindCloseColliderPoint(index);
+                _colliderIndexPoints[i] = FindCloseColliderPoint(index);
             }
 
-            _colliderPoints[12] = _colliderPoints[11] + resolution / 3;
-            _colliderPoints[13] = _colliderPoints[4] - resolution / 3;
-            _colliderPoints[14] = _colliderPoints[5] - resolution / 3;
-            _colliderPoints[15] = _colliderPoints[10] + resolution / 3;
-            _colliderPoints[16] = _colliderPoints[11];
+            _colliderIndexPoints[12] = _colliderIndexPoints[11] + resolution / 3;
+            _colliderIndexPoints[13] = _colliderIndexPoints[4] - resolution / 3;
+            _colliderIndexPoints[14] = _colliderIndexPoints[5] - resolution / 3;
+            _colliderIndexPoints[15] = _colliderIndexPoints[10] + resolution / 3;
+            _colliderIndexPoints[16] = _colliderIndexPoints[11];
         }
 
 
@@ -403,8 +407,8 @@ namespace Cloth2D
             // if (_vertices == null || _springs == null)
             //     return;
 
-            // Prevent large time step while selecting other gameobject in editor.
 #if UNITY_EDITOR
+            // Prevent large time step while selecting other gameobject in editor.
             if (dt > 0.0167f)
                 dt = 0.0167f;
 #endif
@@ -415,17 +419,16 @@ namespace Cloth2D
             ApplyProvotDynamicInverse();
 
             // Update mesh
-            _mesh.SetVertices(GetVertexPositions());
+            SetVertexPositions(_positions);
+            _mesh.SetVertices(_positions);
         }
 
-        private List<Vector3> GetVertexPositions()
+        private void SetVertexPositions(Vector3[] _positions)
         {
-            List<Vector3> positions = new List<Vector3>(resolution * resolution);
-            foreach (var vertex in _vertices)
+            for (int i = 0; i < _vertices.Length; i++)
             {
-                positions.Add(vertex.pos);
+                _positions[i] = _vertices[i].pos;
             }
-            return positions;
         }
 
         private void SetAnchors()
@@ -511,8 +514,8 @@ namespace Cloth2D
                 Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
                 _vertices[i].f.x += windForce.x * _segmentWidth;
                 _vertices[i].f.y += windForce.y * _segmentHeight;
-                _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, seed) - 0.5f) / (1f + wet) * turbulence * _segmentWidth * 10f;
-                _vertices[i].f.y += (Mathf.PerlinNoise(seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * turbulence * _segmentHeight * 10f;
+                _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, _seed) - 0.5f) / (1f + wet) * turbulence * _segmentWidth * 10f;
+                _vertices[i].f.y += (Mathf.PerlinNoise(_seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * turbulence * _segmentHeight * 10f;
                 
                 if (wetness > 0f)
                 {
@@ -565,7 +568,7 @@ namespace Cloth2D
         {
             float dtMass = dt / mass;
             int i = 0;
-            float maxLimit = 100f / sprite.pixelsPerUnit * 3f;
+            float maxLimit = 100f / sprite.pixelsPerUnit * 5f;
 
             for (i = 0; i < _vertices.Length; i++)
             {
