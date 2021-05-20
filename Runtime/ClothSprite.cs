@@ -56,7 +56,7 @@ namespace Cloth2D
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate;
         [Tooltip("How many segments will be. The higher resolution the less performance.")]
-        [Range(4, 16)] public int resolution = 12;
+        [Range(4, 16)] public int resolution = 8;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
         [Range(0f, 1f)] public float stiffness = 0.5f;
@@ -66,7 +66,7 @@ namespace Cloth2D
         [Tooltip("Anchors will be set by mode.")]
         public Cloth2DMode mode = Cloth2DMode.Horizontal_Two;
         [Tooltip("How much the collision will affect.")]
-        [Range(1f, 5f)] public float collisionResponse = 1.2f;
+        [Range(0f, 5f)] public float collisionResponse = 1.2f;
 
         private List<int> _anchors = new List<int>();
         private Transform _transform;
@@ -573,8 +573,7 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass / 2f;
-                if (_vertices[i].vel.sqrMagnitude > maxLimit * maxLimit)
-                    _vertices[i].vel = _vertices[i].vel.normalized * maxLimit;
+                ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
 
@@ -583,8 +582,7 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass;
-                if (_vertices[i].vel.sqrMagnitude > maxLimit * maxLimit)
-                    _vertices[i].vel = _vertices[i].vel.normalized * maxLimit;
+                ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
         }
@@ -684,6 +682,7 @@ namespace Cloth2D
         {
             Vector3 targetV;
             Vector3 worldPos;
+            float unit = 100f / sprite.pixelsPerUnit;
             if (collider.CompareTag(ClothSprite.clothTag))
             {
                 for (int i = 0; i < _vertices.Length; i++)
@@ -692,7 +691,8 @@ namespace Cloth2D
                     if (!isAnchorVertex(i) && collider.OverlapPoint(worldPos))
                     {
                         targetV = _collider.bounds.center - worldPos;
-                        ClampTargetVelocity(ref targetV);
+                        
+                        ClampVelocity(ref targetV, unit * collisionResponse);
                         _vertices[i].vel = targetV;
                     }
                 }
@@ -708,18 +708,24 @@ namespace Cloth2D
              *        if dot < 0, targetV <- targetV + forthV + (clothOriginV)
              *  4.  Clamp targetV & vertex.vel <- targetV
              */
+            Vector3 otherV = Vector3.zero;
+            Vector3 kinematicForthV = Vector3.zero;
+            if (collider.attachedRigidbody != null)
+            {
+                otherV = collider.attachedRigidbody.velocity;
+                if (collider.attachedRigidbody.bodyType == RigidbodyType2D.Kinematic)
+                {
+                    kinematicForthV = _collider.bounds.center - collider.bounds.center;
+                    otherV += collider.GetComponent<ClothKinematicReceiver>()?.DeltaPosition / Time.fixedDeltaTime ?? Vector3.zero;
+                }
+            }
+
             for (int i = 0; i < _vertices.Length; i++)
             {
                 worldPos = _transform.position + _vertices[i].pos;
                 if (!isAnchorVertex(i) && collider.OverlapPoint(worldPos))
                 {
-                    Vector3 otherVelocity = collider.attachedRigidbody.velocity;
-                    if (collider.attachedRigidbody.bodyType == RigidbodyType2D.Kinematic)
-                    {
-                        otherVelocity += (_collider.bounds.center - collider.bounds.center);
-                    }
-                    targetV = _vertices[i].vel + otherVelocity;
-
+                    targetV = _vertices[i].vel + otherV + kinematicForthV;
                     Vector3 direction = targetV.normalized;
                     Vector3 forthV = (worldPos - collider.bounds.center).normalized;
                     if (Vector3.Dot(direction, forthV) < 0f)
@@ -731,27 +737,25 @@ namespace Cloth2D
                     else
                     {
                         if (Mathf.Sign(targetV.x) != Mathf.Sign(forthV.x))
-                        {
                             targetV.x *= -1f;
-                        }
                         if (Mathf.Sign(targetV.y) != Mathf.Sign(forthV.y))
-                        {
                             targetV.y *= -1f;
-                        }
                     }
 
-                    ClampTargetVelocity(ref targetV);
+                    if (otherV.sqrMagnitude < 0.01f)
+                        ClampVelocity(ref targetV, unit * 0.3f);
+                    else
+                        ClampVelocity(ref targetV, unit * collisionResponse);
                     _vertices[i].vel = targetV;
                 }
             }
         }
 
-        private void ClampTargetVelocity(ref Vector3 targetV)
+        private void ClampVelocity(ref Vector3 targetV, float max)
         {
-            float maxLimit = 100f / sprite.pixelsPerUnit * collisionResponse;
-            if (targetV.sqrMagnitude > maxLimit * maxLimit)
+            if (targetV.sqrMagnitude > max * max)
             {
-                targetV = targetV.normalized * maxLimit;
+                targetV = targetV.normalized * max;
             }
         }
 
