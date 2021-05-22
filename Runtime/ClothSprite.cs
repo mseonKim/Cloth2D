@@ -109,13 +109,13 @@ namespace Cloth2D
         {
             if (!useFixedUpdate)
             {
-                UpdateCollider();
                 UpdateCloth(Time.deltaTime);
             }
         }
 
         void FixedUpdate()
         {
+            UpdateCollider();
             if (useFixedUpdate)
             {
                 UpdateCloth(Time.fixedDeltaTime);
