@@ -15,7 +15,7 @@ namespace Cloth2D
         [Tooltip("How far the wind could reach.")]
         [Range(0f, 1000f)] public float maxDistance = 100f;
         [SerializeField]
-        [Range(0f, 1f)] private float _turbulence = 0.1f;
+        [Range(0f, 1f)] private float _turbulence = 0.5f;
 
         public Vector3 windDriection
         {

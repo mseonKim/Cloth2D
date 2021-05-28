@@ -7,7 +7,7 @@ This package contains 2D Cloth and 2D Wind to support multiple clothes with wind
 ![image](https://user-images.githubusercontent.com/12474900/118684370-1e8cec80-b83d-11eb-8826-75f085867fde.png)
 <br>
 Support multiple clothes. Consider which resolution is the best option for your game performance.
-The collision only supports kinematic or dynamic rigidbody.
+The collision only supports kinematic or dynamic rigidbody by default.
 
 > Add _"ClothKinematicReceiver"_ to a gameobject if the gameobject has a kinematic rigidbody.
 > Otherwise, the cloth can't know whether the kinematic object has moved or not.

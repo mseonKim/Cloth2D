@@ -54,7 +54,7 @@ namespace Cloth2D
         [Tooltip("Flip texture vertically.")]
         public bool flipTexture;
         [Tooltip("Use FixedUpdate instead of Update")]
-        public bool useFixedUpdate;
+        public bool useFixedUpdate = true;
         [Tooltip("How many segments will be. The higher resolution the less performance.")]
         [Range(4, 16)] public int resolution = 8;
         [Range(-10f, 10f)] public float gravity = 1f;
@@ -140,7 +140,7 @@ namespace Cloth2D
                 {
                     _preSpriteId = -1;
                     _vertices = null;
-                    UnityEditor.EditorApplication.delayCall += () => _meshFilter.mesh = new Mesh();
+                    UnityEditor.EditorApplication.delayCall += () => _meshFilter.sharedMesh = new Mesh();
                 }
                 return;
             }
@@ -148,7 +148,7 @@ namespace Cloth2D
             if (_preResolution != resolution || _preSpriteId != sprite.GetInstanceID())
             {
                 Initialize(true);
-                UnityEditor.EditorApplication.delayCall += () => _meshFilter.mesh = _mesh;
+                UnityEditor.EditorApplication.delayCall += () => _meshFilter.sharedMesh = _mesh;
             }
         }
 
@@ -174,12 +174,12 @@ namespace Cloth2D
             _collider = GetComponent<PolygonCollider2D>();
 
             SetAnchors();
-            GenerateMesh();
+            GenerateMesh(isOnValidate);
             GenerateSprings();
         }
 
 
-        private void GenerateMesh()
+        private void GenerateMesh(bool isOnValidate = false)
         {
             /**
              * @example - 4x4
@@ -199,6 +199,13 @@ namespace Cloth2D
 
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
+#if UNITY_EDITOR
+            if (isOnValidate)
+            {
+                _material = new Material(_material);
+                GetComponent<MeshRenderer>().material = _material;
+            }
+#endif
 
             if (_material == null)
                 return;
