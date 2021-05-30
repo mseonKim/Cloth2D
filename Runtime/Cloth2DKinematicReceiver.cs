@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ClothKinematicReceiver : MonoBehaviour
+public class Cloth2DKinematicReceiver : MonoBehaviour
 {
     public Vector3 DeltaPosition { get; private set; }
     private Transform _transform;

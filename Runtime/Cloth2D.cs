@@ -5,49 +5,7 @@ using UnityEngine;
 
 namespace Cloth2D
 {
-    public struct Vertex
-    {
-        public Vector3 pos;
-        public Vector3 vel;
-        public Vector3 f;
-    }
-
-    public struct Spring
-    {
-        public int p1;
-        public int p2;
-        public float ks; 
-        public float kd;
-        public float restLength;
-
-        public Spring(int p1, int p2, float ks, float kd, float restLength)
-        {
-            this.p1 = p1;
-            this.p2 = p2;
-            this.ks = ks;
-            this.kd = kd;
-            this.restLength = restLength;
-        }
-    }
-
-    public enum Cloth2DMode
-    {
-        None,
-        Top_Left,
-        Top_Right,
-        Horizontal_Two,
-        Horizontal_Three,
-        Horizontal_All,
-        Vertical_Two,
-        Vertical_All,
-        Vertical_Right_Two,
-        Vertical_Right_All,
-        Horizontal_Vertical_Two,
-        Horizontal_Vertical_All,
-        All_Corners
-    }
-
-    public class ClothSprite : MonoBehaviour
+    public class Cloth2D : MonoBehaviour
     {
         public const string clothTag = "Cloth2D";
         public Sprite sprite;
@@ -55,7 +13,7 @@ namespace Cloth2D
         public bool flipTexture;
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate = true;
-        [Tooltip("How many segments will be. The higher resolution the less performance.")]
+        [Tooltip("Total number of segments simulated. The higher resolution the less performance.")]
         [Range(4, 16)] public int resolution = 8;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
@@ -90,49 +48,46 @@ namespace Cloth2D
         private int _preResolution;
 
 
-        void Awake()
+        private void Awake()
         {
             Initialize();
             _transform.rotation = Quaternion.identity;
             _transform.localScale = Vector3.one;
         }
 
-        // Start is called before the first frame update
-        void Start()
+        private void Start()
         {
             _meshFilter.sharedMesh = _mesh;
-            _seed = Random.value * 999f;
         }
 
-        // Update is called once per frame
-        void Update()
+        private void Update()
         {
             if (!useFixedUpdate)
             {
-                UpdateCloth(Time.deltaTime);
+                StepCloth(Time.deltaTime);
             }
         }
 
-        void FixedUpdate()
+        private void FixedUpdate()
         {
             UpdateCollider();
             if (useFixedUpdate)
             {
-                UpdateCloth(Time.fixedDeltaTime);
+                StepCloth(Time.fixedDeltaTime);
             }
         }
 
-        public void OnTriggerEnter2D(Collider2D collider)
+        private void OnTriggerEnter2D(Collider2D collider)
         {
             ApplyCollision(collider);
         }
 
-        public void OnTriggerStay2D(Collider2D collider)
+        private void OnTriggerStay2D(Collider2D collider)
         {
             ApplyCollision(collider);
         }
 
-        void OnValidate()
+        private void OnValidate()
         {
             if (sprite == null)
             {
@@ -172,6 +127,7 @@ namespace Cloth2D
             _segmentWidth = _width / resolution;
             _segmentHeight = _height / resolution;
             _collider = GetComponent<PolygonCollider2D>();
+            _seed = Random.value * 999f;
 
             SetAnchors();
             GenerateMesh(isOnValidate);
@@ -195,7 +151,6 @@ namespace Cloth2D
             // Set values
             _preResolution = resolution;
             _preSpriteId = sprite.GetInstanceID();
-            _positions = new Vector3[resolution * resolution];
 
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
@@ -213,20 +168,21 @@ namespace Cloth2D
             _material.mainTexture = sprite.texture;
 
             _mesh = new Mesh();
-            _mesh.name = "ClothSpriteMesh";
+            _mesh.name = "Cloth2DMesh";
 
             int length = resolution * resolution;
             int offset = resolution - 1;
 
             // Set Vertices
             _vertices = new Vertex[length];
+            _positions = new Vector3[length];
             for (int i = 0; i < length; i++)
             {
                 Vector3 newPos = new Vector3(_width / offset * (i % resolution), -_height / offset * (i / resolution), 0f);
                 _vertices[i].pos = newPos;
                 _vertices[i].vel = Vector3.zero;
                 _vertices[i].f = Vector3.zero;
-                RotateVector(ref _vertices[i].pos, _rad);
+                Cloth2DUtils.RotateVector(ref _vertices[i].pos, _rad);
             }
             SetVertexPositions(_positions);
             _mesh.SetVertices(_positions);
@@ -271,16 +227,6 @@ namespace Cloth2D
                 }
             }
             _mesh.SetUVs(0, uvs);
-        }
-
-        private void RotateVector(ref Vector3 pos, float rad)
-        {
-            float sin = Mathf.Sin(rad);
-            float cos = Mathf.Cos(rad);
-            float x = cos * pos.x + -sin * pos.y;
-            float y = sin * pos.x + cos * pos.y;
-            pos.x = x;
-            pos.y = y;
         }
 
         private void GenerateSprings()
@@ -347,7 +293,6 @@ namespace Cloth2D
             }
         }
 
-
         private void UpdateCollider()
         {
             if (_collider == null || !_collider.enabled)
@@ -406,7 +351,7 @@ namespace Cloth2D
         }
 
 
-        private void UpdateCloth(float dt)
+        private void StepCloth(float dt)
         {
             if (sprite == null)
                 return;
@@ -575,12 +520,12 @@ namespace Cloth2D
         {
             float dtMass = dt / mass;
             int i = 0;
-            float maxLimit = 100f / sprite.pixelsPerUnit * 5f;
+            float maxLimit = 100f / sprite.pixelsPerUnit * Mathf.Min(_segmentWidth, _segmentHeight) * 5f;
 
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass / 2f;
-                ClampVelocity(ref _vertices[i].vel, maxLimit);
+                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
 
@@ -589,7 +534,7 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass;
-                ClampVelocity(ref _vertices[i].vel, maxLimit);
+                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
             }
         }
@@ -690,7 +635,7 @@ namespace Cloth2D
             Vector3 targetV;
             Vector3 worldPos;
             float unit = 100f / sprite.pixelsPerUnit;
-            if (collider.CompareTag(ClothSprite.clothTag))
+            if (collider.CompareTag(Cloth2D.clothTag))
             {
                 for (int i = 0; i < _vertices.Length; i++)
                 {
@@ -699,7 +644,7 @@ namespace Cloth2D
                     {
                         targetV = _collider.bounds.center - worldPos;
                         
-                        ClampVelocity(ref targetV, unit * collisionResponse);
+                        Cloth2DUtils.ClampVelocity(ref targetV, unit * collisionResponse);
                         _vertices[i].vel = targetV;
                     }
                 }
@@ -723,7 +668,7 @@ namespace Cloth2D
                 if (collider.attachedRigidbody.bodyType == RigidbodyType2D.Kinematic)
                 {
                     kinematicForthV = _collider.bounds.center - collider.bounds.center;
-                    otherV += collider.GetComponent<ClothKinematicReceiver>()?.DeltaPosition / Time.fixedDeltaTime ?? Vector3.zero;
+                    otherV += collider.GetComponent<Cloth2DKinematicReceiver>()?.DeltaPosition / Time.fixedDeltaTime ?? Vector3.zero;
                 }
             }
 
@@ -750,19 +695,11 @@ namespace Cloth2D
                     }
 
                     if (otherV.sqrMagnitude < 0.01f)
-                        ClampVelocity(ref targetV, unit * 0.3f);
+                        Cloth2DUtils.ClampVelocity(ref targetV, unit * 0.3f);
                     else
-                        ClampVelocity(ref targetV, unit * collisionResponse);
+                        Cloth2DUtils.ClampVelocity(ref targetV, unit * collisionResponse);
                     _vertices[i].vel = targetV;
                 }
-            }
-        }
-
-        private void ClampVelocity(ref Vector3 targetV, float max)
-        {
-            if (targetV.sqrMagnitude > max * max)
-            {
-                targetV = targetV.normalized * max;
             }
         }
 
@@ -773,18 +710,19 @@ namespace Cloth2D
 
             Gizmos.color = new Color(0f, 1f, 1f, 0.3f);
             Vector3 curPos = _transform.position;
+            float rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Vector3 curVPos = curPos + TransformVector(_vertices[i].pos, _transform.localScale);
+                Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.localScale, rad);
                 Gizmos.DrawWireCube(curVPos, Vector3.one * 0.05f);
                 if (i % resolution < resolution - 1)
                 {
-                    Vector3 rightVPos = curPos + TransformVector(_vertices[i + 1].pos, _transform.localScale);
+                    Vector3 rightVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + 1].pos, _transform.localScale, rad);
                     Gizmos.DrawLine(curVPos, rightVPos);
                     if (i < _vertices.Length - resolution)
                     {
-                        Vector3 downVPos = curPos + TransformVector(_vertices[i + resolution].pos, _transform.localScale);
-                        Vector3 diagonalVPos = curPos + TransformVector(_vertices[i + resolution + 1].pos, _transform.localScale);
+                        Vector3 downVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution].pos, _transform.localScale, rad);
+                        Vector3 diagonalVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution + 1].pos, _transform.localScale, rad);
                         Gizmos.DrawLine(curVPos, downVPos);
                         Gizmos.DrawLine(rightVPos, downVPos);
                         Gizmos.DrawLine(rightVPos, diagonalVPos);
@@ -793,16 +731,6 @@ namespace Cloth2D
             }
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
         }
-
-#if UNITY_EDITOR
-        private Vector3 TransformVector(in Vector3 v, in Vector3 scale)
-        {
-            float rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
-            Vector3 vector = new Vector3(v.x * scale.x, v.y * scale.y, v.z);
-            RotateVector(ref vector, rad);
-            return vector;
-        }
-#endif
 
     }
 }

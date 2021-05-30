@@ -21,10 +21,10 @@ namespace Cloth2D.EditorUtility
             PolygonCollider2D collider = go.GetComponent<PolygonCollider2D>();
             collider.isTrigger = true;
             collider.enabled = false;
-            go.AddComponent<ClothSprite>();
+            go.AddComponent<Cloth2D>();
 
             Prepare2DClothTag();
-            go.tag = ClothSprite.clothTag;
+            go.tag = Cloth2D.clothTag;
 
             GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
             Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
@@ -59,11 +59,11 @@ namespace Cloth2D.EditorUtility
             for (int i = 0; i < tagsProp.arraySize; i++)
             {
                 SerializedProperty t = tagsProp.GetArrayElementAtIndex(i);
-                if (t.stringValue.Equals(ClothSprite.clothTag)) { return; }
+                if (t.stringValue.Equals(Cloth2D.clothTag)) { return; }
             }
 
             tagsProp.InsertArrayElementAtIndex(0);
-            tagsProp.GetArrayElementAtIndex(0).stringValue = ClothSprite.clothTag;
+            tagsProp.GetArrayElementAtIndex(0).stringValue = Cloth2D.clothTag;
             tagManager.ApplyModifiedProperties();
             tagManager.Update();
         }

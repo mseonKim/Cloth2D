@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace Cloth2D.EditorUtility
 {
-    public struct ClothSpriteSettings
+    public struct Cloth2DSettings
     {
         public bool isCopied;
         public bool flipTexture;
@@ -19,10 +19,10 @@ namespace Cloth2D.EditorUtility
     }
 
     [CanEditMultipleObjects]
-    [CustomEditor(typeof(ClothSprite))]
-    public class ClothSpriteEditor: Editor
+    [CustomEditor(typeof(Cloth2D))]
+    public class Cloth2DEditor: Editor
     {
-        public static ClothSpriteSettings copiedSettings;
+        public static Cloth2DSettings copiedSettings;
         SerializedProperty sprite;
         SerializedProperty flipTexture;
         SerializedProperty useFixedUpdate;
