@@ -8,7 +8,7 @@ namespace Cloth2D.EditorUtility
         private static SerializedObject tagManager;
 
         [MenuItem("GameObject/2D Object/2D Cloth", false)]
-        private static void CreateClothSprite(MenuCommand menuCommand)
+        private static void CreateClothChain(MenuCommand menuCommand)
         {
             GameObject go = new GameObject("2D Cloth");
 
@@ -44,6 +44,29 @@ namespace Cloth2D.EditorUtility
             go.AddComponent<Wind2D>();
             GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
             Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
+            Selection.activeObject = go;
+        }
+
+        [MenuItem("GameObject/2D Object/2D ChainCloth", false)]
+        private static void CreateCloth2DChain(MenuCommand menuCommand)
+        {
+            GameObject go = new GameObject("2D ChainCloth");
+
+            go.AddComponent<MeshFilter>();
+
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+
+            go.AddComponent<Cloth2DChain>();
+
+            GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);
+            Undo.RegisterCreatedObjectUndo(go, "Create " + go.name);
+
+            // Create wind if not exists
+            if (GameObject.FindObjectOfType<Wind2D>() == null)
+            {
+                CreateWind2D(menuCommand);
+            }
             Selection.activeObject = go;
         }
 

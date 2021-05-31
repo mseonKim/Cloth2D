@@ -87,6 +87,7 @@ namespace Cloth2D
             ApplyCollision(collider);
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
             if (sprite == null)
@@ -103,9 +104,10 @@ namespace Cloth2D
             if (_preResolution != resolution || _preSpriteId != sprite.GetInstanceID())
             {
                 Initialize(true);
-                UnityEditor.EditorApplication.delayCall += () => _meshFilter.sharedMesh = _mesh;
+                UnityEditor.EditorApplication.delayCall += () => { if (_meshFilter != null) _meshFilter.sharedMesh = _mesh; };
             }
         }
+#endif
 
         private void Initialize(bool isOnValidate = false)
         {
@@ -703,6 +705,7 @@ namespace Cloth2D
             }
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             if (_vertices == null || _vertices.Length < 1)
@@ -731,6 +734,7 @@ namespace Cloth2D
             }
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
         }
+#endif
 
     }
 }

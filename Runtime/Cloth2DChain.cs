@@ -7,34 +7,30 @@ namespace Cloth2D
     public class Cloth2DChain : MonoBehaviour
     {
         public Sprite sprite;
+        [Tooltip("Use FixedUpdate instead of Update")]
+        public bool useFixedUpdate = false;
+        [Tooltip("How far the first anchor is from transform position. 0.5 means the center.")]
         [Range(0f, 1f)] public float anchorOffset = 0.5f;
-        [Tooltip("Uses a smoothed anchor point instead of this Transform's position")]
-        [Range(0f, 1f)] public float smoothAnchor = 0f;
-        [Tooltip("Total number of points simulated.")]
+        [Tooltip("Total number of chain points simulated.")]
         [Range(2, 16)] public int chainPoints = 5;
         [Range(-10f, 10f)] public float gravity = 1f;
         [Range(0.1f, 10f)] public float mass = 1f;
-        [Tooltip("How much velocity is added when snapping back to the correct length")]
-        [Range(0f, 6f)] public float elasticResponse = 3f;
+        [Tooltip("How much velocity is added when snapping back to the correct length.")]
+        [Range(0f, 6f)] public float elasticResponse = 0f;
+        [Tooltip("The last anchor index. If point's index <= lastAnchor, the position is fixed.")]
         public int lastAnchor = 0;
-
-        public bool useFixedUpdate = false;
 
         private Transform _transform;
         private MeshFilter _meshFilter;
         private Mesh _mesh;
         private Material _material;
-        private PolygonCollider2D _collider;
         
         private float _seed;
         private float _width;
         private float _height;
         private float _segmentHeight;
-        private Vector3 _anchor;
         private Vertex[] _vertices;
         private Vector3[] _positions;
-        private Vector2[] _colliderPoints;
-        private int[] _colliderIndexPoints;
         private float _rad;
         private int _preSpriteId = -1;
         private int _preChainPoints;
@@ -43,7 +39,6 @@ namespace Cloth2D
         private void Awake()
         {
             Initialize();
-            _transform.rotation = Quaternion.identity;
             _transform.localScale = Vector3.one;
         }
 
@@ -67,6 +62,7 @@ namespace Cloth2D
             }
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
             if (sprite == null)
@@ -83,10 +79,10 @@ namespace Cloth2D
             if (_preChainPoints != chainPoints || _preSpriteId != sprite.GetInstanceID())
             {
                 Initialize(true);
-                UnityEditor.EditorApplication.delayCall += () => _meshFilter.sharedMesh = _mesh;
+                UnityEditor.EditorApplication.delayCall += () => { if (_meshFilter != null) _meshFilter.sharedMesh = _mesh; };
             }
         }
-
+#endif
 
         private void Initialize(bool isOnValidate = false)
         {
@@ -94,7 +90,6 @@ namespace Cloth2D
                 return;
 
             _transform = transform;
-            _rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
             _width = sprite.texture.width * _transform.localScale.x / sprite.pixelsPerUnit;
             _height = sprite.texture.height * _transform.localScale.y / sprite.pixelsPerUnit;
 #if UNITY_EDITOR
@@ -105,7 +100,6 @@ namespace Cloth2D
                 _height = sprite.texture.height / sprite.pixelsPerUnit;
             }
 #endif
-
             _segmentHeight = _height / chainPoints;
             _seed = Random.value * 999f;
 
@@ -150,7 +144,6 @@ namespace Cloth2D
                 _vertices[i].pos = newPos;
                 _vertices[i].vel = Vector3.zero;
                 _vertices[i].f = Vector3.zero;
-                Cloth2DUtils.RotateVector(ref _vertices[i].pos, _rad);
             }
             SetVertexPositions(_positions);
             _mesh.SetVertices(_positions);
@@ -194,8 +187,6 @@ namespace Cloth2D
             if (sprite == null)
                 return;
 
-            // _anchor = (smoothAnchor > 0f) ? Vector3.Lerp(_anchor, _transform.position, dt * Mathf.Lerp(30f, 5f, smoothAnchor)) : transform.position;
-
             ComputeForces(dt);
             IntegrateEuler(dt);
             for (int i = 0; i < _vertices.Length; i++)
@@ -220,9 +211,9 @@ namespace Cloth2D
                 
                 Vector3 windForce = Mathf.Pow(wind / mass, 1.5f) * wind2d.windDriection * 10f;
                 _vertices[i].f.x += windForce.x * _segmentHeight;
-                // _vertices[i].f.y += windForce.y * _segmentLength;
+                _vertices[i].f.y += windForce.y * _segmentHeight;
                 _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentHeight * 0.3f, _seed) - 0.5f) * turbulence * _segmentHeight * 10f;
-                // _vertices[i].f.y += (Mathf.PerlinNoise(_seed, Time.time + i * _segmentLength * 0.3f) - 0.5f) * turbulence * _segmentLength * 10f;
+                _vertices[i].f.y += (Mathf.PerlinNoise(_seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) * turbulence * _segmentHeight * 10f;
             }
         }
 
@@ -300,6 +291,7 @@ namespace Cloth2D
             }
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             if (_vertices == null || _vertices.Length < 1)
@@ -312,10 +304,6 @@ namespace Cloth2D
             {
                 Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.localScale, rad);
                 Gizmos.DrawWireCube(curVPos, Vector3.one * 0.05f);
-                // Gizmos.color = new Color(1f, 1f, 0f, 0.7f);
-                // Gizmos.DrawWireCube(curPos + Cloth2DUtils.TransformVector(_positions[i * 2], _transform.localScale, rad), Vector3.one * 0.05f);
-                // Gizmos.DrawWireCube(curPos + Cloth2DUtils.TransformVector(_positions[i * 2 + 1], _transform.localScale, rad), Vector3.one * 0.05f);
-                // Gizmos.color = new Color(0f, 1f, 1f, 0.3f);
                 if (i > 0)
                 {
                     Gizmos.DrawLine(curPos + Cloth2DUtils.TransformVector(_vertices[i - 1].pos, _transform.localScale, rad), curVPos);
@@ -323,6 +311,7 @@ namespace Cloth2D
             }
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
         }
+#endif
 
     }
 }
