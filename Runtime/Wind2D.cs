@@ -36,6 +36,7 @@ namespace Cloth2D
             if (infiniteDistance)
                 return _wind;
 
+            pos.z = transform.position.z;
             float dist = (transform.position - pos).magnitude;
             if (dist > maxDistance)
                 return 0f;
@@ -51,6 +52,7 @@ namespace Cloth2D
             if (infiniteDistance)
                 return _wind;
 
+            pos.z = transform.position.z;
             float dist = (transform.position - pos).magnitude;
             if (dist > maxDistance)
                 return 0f;
@@ -66,6 +68,7 @@ namespace Cloth2D
             Wind2DReceiver.GetInstance().UnregisterWind(this.gameObject.GetInstanceID());
         }
 
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             int number = 5;
@@ -90,6 +93,7 @@ namespace Cloth2D
                 Gizmos.DrawWireSphere(transform.position, maxDistance);
             }
         }
+#endif
     }
 }
 
