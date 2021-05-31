@@ -1,7 +1,10 @@
 # 2D Cloth
+![image](https://user-images.githubusercontent.com/12474900/120170605-191ba300-c23c-11eb-8993-33a640d6bdb1.png)
 
 The 2D cloth system for Unity. Use _"2D Object -> 2D Cloth"_ to create new cloth2D gameobject and _"2D Wind"_ for new wind gameobject.
 This package contains 2D Cloth and 2D Wind to support multiple clothes with wind system.
+
+See WebGL Demo here: [Link](http://13.124.212.66/game, "Demo link")
 
 ## Cloth2D
 ![image](https://user-images.githubusercontent.com/12474900/118684370-1e8cec80-b83d-11eb-8826-75f085867fde.png)
@@ -30,3 +33,10 @@ In this case, make sure if you locked positionXY and rotationZ and the gravity s
 <br>
 Support multiple winds.
 Note that the wind affects a cloth if the cloth's world transform position is in its boundary.
+
+
+## Cloth2DChain
+![image](https://user-images.githubusercontent.com/12474900/120171132-a9f27e80-c23c-11eb-9303-92b69b4be31f.png)
+<br>
+Simple version of cloth2D, which is specialized for 2d chain stuff. It also supports multiple chain clothes.
+Note that it doesn't support rotation and collision.
