@@ -505,9 +505,9 @@ namespace Cloth2D
                 float rightTerm = -s.kd * (Vector3.Dot(deltaV, deltaV) / dist);
                 Vector3 springForce = (leftTerm + rightTerm) * deltaP.normalized;
 
-                // float maxForce = Mathf.Max(_segmentWidth, _segmentHeight);
-                // if (springForce.magnitude > maxForce)
-                //     springForce = springForce.normalized * maxForce;
+                float maxForce = Mathf.Max(_segmentWidth, _segmentHeight);
+                if (springForce.magnitude > maxForce)
+                    springForce = springForce.normalized * maxForce;
 
                 if (!isAnchorVertex(s.p1))
                     _vertices[s.p1].f += springForce;
@@ -525,8 +525,8 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass / 2f;
-                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
+                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
             }
 
             ComputeForces(dt);
@@ -534,8 +534,8 @@ namespace Cloth2D
             for (i = 0; i < _vertices.Length; i++)
             {
                 _vertices[i].vel += _vertices[i].f * dtMass;
-                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
                 _vertices[i].pos += dt * _vertices[i].vel;
+                Cloth2DUtils.ClampVelocity(ref _vertices[i].vel, maxLimit);
             }
         }
 
