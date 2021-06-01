@@ -459,7 +459,7 @@ namespace Cloth2D
 
         private void ApplyWinds(int i, float dt)
         {
-            foreach(var wind2d in Wind2DReceiver.GetInstance().Winds.Values)
+            foreach(var wind2d in Wind2DReceiver.Instance.Winds.Values)
             {
                 float wind =  wind2d.GetWind(_transform.position);
                 float turbulence =  wind2d.GetTurbulence(_transform.position);
@@ -716,16 +716,16 @@ namespace Cloth2D
             float rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.localScale, rad);
+                Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.lossyScale, rad);
                 Gizmos.DrawWireCube(curVPos, Vector3.one * 0.05f);
                 if (i % resolution < resolution - 1)
                 {
-                    Vector3 rightVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + 1].pos, _transform.localScale, rad);
+                    Vector3 rightVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + 1].pos, _transform.lossyScale, rad);
                     Gizmos.DrawLine(curVPos, rightVPos);
                     if (i < _vertices.Length - resolution)
                     {
-                        Vector3 downVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution].pos, _transform.localScale, rad);
-                        Vector3 diagonalVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution + 1].pos, _transform.localScale, rad);
+                        Vector3 downVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution].pos, _transform.lossyScale, rad);
+                        Vector3 diagonalVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i + resolution + 1].pos, _transform.lossyScale, rad);
                         Gizmos.DrawLine(curVPos, downVPos);
                         Gizmos.DrawLine(rightVPos, downVPos);
                         Gizmos.DrawLine(rightVPos, diagonalVPos);

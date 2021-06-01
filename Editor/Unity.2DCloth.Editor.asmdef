@@ -1,7 +1,7 @@
 {
     "name": "Unity.2D.Cloth.Editor",
     "references": [
-        "Unity.2D.Cloth"
+        "Unity.2D.Cloth.Runtime"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [

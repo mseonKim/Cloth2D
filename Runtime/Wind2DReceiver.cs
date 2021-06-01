@@ -9,10 +9,7 @@ namespace Cloth2D
         public Dictionary<int, Wind2D> Winds { get; private set; }
 
         private static readonly Lazy<Wind2DReceiver> instance = new Lazy<Wind2DReceiver>(() => new Wind2DReceiver());
-        public static Wind2DReceiver GetInstance()
-        {
-            return instance.Value;
-        }
+        public static Wind2DReceiver Instance { get { return instance.Value; } }
 
         private Wind2DReceiver()
         {

@@ -6,8 +6,7 @@ namespace Cloth2D
     public class Wind2D : MonoBehaviour
     {
         [SerializeField]
-        [Range(0f, 1f)]
-        private float _wind = 0.3f; // Vanila wind
+        [Range(0f, 1f)] private float _wind = 0.3f; // Vanila wind strength
         [Tooltip("Apply wind regardless of distance.")]
         public bool infiniteDistance;
         [Tooltip("Apply linear attenuation by distance if InfiniteDistance is disabled.")]
@@ -16,6 +15,8 @@ namespace Cloth2D
         [Range(0f, 1000f)] public float maxDistance = 100f;
         [SerializeField]
         [Range(0f, 1f)] private float _turbulence = 0.5f;
+
+        public float windStrength { get { return _wind; } }
 
         public Vector3 windDriection
         {
@@ -28,7 +29,7 @@ namespace Cloth2D
 
         void OnEnable()
         {
-            Wind2DReceiver.GetInstance().RegisterWind(this);
+            Wind2DReceiver.Instance.RegisterWind(this);
         }
 
         public float GetWind(Vector3 pos)
@@ -45,6 +46,11 @@ namespace Cloth2D
                 return _wind;
             
             return Mathf.Max(0f, _wind * (1 - dist / maxDistance));
+        }
+
+        public void SetWindStrength(float value)
+        {
+            _wind = value;
         }
 
         public float GetTurbulence(Vector3 pos)
@@ -65,7 +71,7 @@ namespace Cloth2D
 
         void OnDisable()
         {
-            Wind2DReceiver.GetInstance().UnregisterWind(this.gameObject.GetInstanceID());
+            Wind2DReceiver.Instance.UnregisterWind(this.gameObject.GetInstanceID());
         }
 
 #if UNITY_EDITOR

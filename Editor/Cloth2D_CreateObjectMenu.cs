@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Cloth2D.EditorUtility
 {
@@ -17,6 +18,7 @@ namespace Cloth2D.EditorUtility
             MeshRenderer mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
 
+            go.AddComponent<SortingGroup>();
             go.AddComponent<PolygonCollider2D>();
             PolygonCollider2D collider = go.GetComponent<PolygonCollider2D>();
             collider.isTrigger = true;
@@ -57,6 +59,7 @@ namespace Cloth2D.EditorUtility
             MeshRenderer mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
 
+            go.AddComponent<SortingGroup>();
             go.AddComponent<Cloth2DChain>();
 
             GameObjectUtility.SetParentAndAlign(go, menuCommand.context as GameObject);

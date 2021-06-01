@@ -18,7 +18,7 @@ namespace Cloth2D
         [Tooltip("How much velocity is added when snapping back to the correct length.")]
         [Range(0f, 6f)] public float elasticResponse = 0f;
         [Tooltip("The last anchor index. If point's index <= lastAnchor, the position is fixed.")]
-        public int lastAnchor = 0;
+        [Min(0)] public int lastAnchor = 0;
 
         private Transform _transform;
         private MeshFilter _meshFilter;
@@ -31,7 +31,6 @@ namespace Cloth2D
         private float _segmentHeight;
         private Vertex[] _vertices;
         private Vector3[] _positions;
-        private float _rad;
         private int _preSpriteId = -1;
         private int _preChainPoints;
 
@@ -95,7 +94,6 @@ namespace Cloth2D
 #if UNITY_EDITOR
             if (isOnValidate)
             {
-                _rad = 0f;
                 _width = sprite.texture.width / sprite.pixelsPerUnit;
                 _height = sprite.texture.height / sprite.pixelsPerUnit;
             }
@@ -204,7 +202,7 @@ namespace Cloth2D
 
         private void ApplyWinds(int i, float dt)
         {
-            foreach(var wind2d in Wind2DReceiver.GetInstance().Winds.Values)
+            foreach(var wind2d in Wind2DReceiver.Instance.Winds.Values)
             {
                 float wind =  wind2d.GetWind(_transform.position);
                 float turbulence =  wind2d.GetTurbulence(_transform.position);
@@ -302,11 +300,11 @@ namespace Cloth2D
             float rad = _transform.rotation.eulerAngles.z * Mathf.Deg2Rad;
             for (int i = 0; i < _vertices.Length; i++)
             {
-                Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.localScale, rad);
+                Vector3 curVPos = curPos + Cloth2DUtils.TransformVector(_vertices[i].pos, _transform.lossyScale, rad);
                 Gizmos.DrawWireCube(curVPos, Vector3.one * 0.05f);
                 if (i > 0)
                 {
-                    Gizmos.DrawLine(curPos + Cloth2DUtils.TransformVector(_vertices[i - 1].pos, _transform.localScale, rad), curVPos);
+                    Gizmos.DrawLine(curPos + Cloth2DUtils.TransformVector(_vertices[i - 1].pos, _transform.lossyScale, rad), curVPos);
                 }
             }
             Gizmos.color = new Color(1f, 1f, 1f, 1f);
