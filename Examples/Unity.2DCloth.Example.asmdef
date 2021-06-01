@@ -1,0 +1,10 @@
+﻿{
+	"name": "Unity.2DCloth.Example",
+	"references": [
+        "Unity.2D.Cloth.Runtime"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
