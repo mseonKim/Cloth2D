@@ -36,7 +36,7 @@ Note that the wind affects a cloth if the cloth's world transform position is in
 
 
 ## Cloth2DChain
-![image](https://user-images.githubusercontent.com/12474900/120171132-a9f27e80-c23c-11eb-9303-92b69b4be31f.png)
+![image](https://user-images.githubusercontent.com/12474900/120292669-77f62080-c2ff-11eb-9678-9cbe3c273995.png)
 <br>
 Simple version of cloth2D, which is specialized for 2d chain stuff. It also supports multiple chain clothes.
 Note that it doesn't support rotation and collision.
