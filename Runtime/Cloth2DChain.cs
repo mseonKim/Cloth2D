@@ -7,7 +7,7 @@ namespace Cloth2D
     public class Cloth2DChain : MonoBehaviour
     {
         public Sprite sprite;
-        public Color color;
+        public Color color = Color.white;
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate = false;
         [Tooltip("How far the first anchor is from transform position. 0.5 means the center.")]
