@@ -9,6 +9,7 @@ namespace Cloth2D
     {
         public const string clothTag = "Cloth2D";
         public Sprite sprite;
+        public Color color = Color.white;
         [Tooltip("Flip texture vertically.")]
         public bool flipTexture;
         [Tooltip("Use FixedUpdate instead of Update")]
@@ -106,6 +107,9 @@ namespace Cloth2D
                 Initialize(true);
                 UnityEditor.EditorApplication.delayCall += () => { if (_meshFilter != null) _meshFilter.sharedMesh = _mesh; };
             }
+
+            if (_material != null)
+                _material.color = color;
         }
 #endif
 
@@ -157,7 +161,7 @@ namespace Cloth2D
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
 #if UNITY_EDITOR
-            if (isOnValidate)
+            if (isOnValidate && _material != null)
             {
                 _material = new Material(_material);
                 GetComponent<MeshRenderer>().material = _material;
@@ -168,6 +172,7 @@ namespace Cloth2D
                 return;
 
             _material.mainTexture = sprite.texture;
+            _material.color = color;
 
             _mesh = new Mesh();
             _mesh.name = "Cloth2DMesh";

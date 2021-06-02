@@ -7,6 +7,7 @@ namespace Cloth2D
     public class Cloth2DChain : MonoBehaviour
     {
         public Sprite sprite;
+        public Color color;
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate = false;
         [Tooltip("How far the first anchor is from transform position. 0.5 means the center.")]
@@ -80,6 +81,9 @@ namespace Cloth2D
                 Initialize(true);
                 UnityEditor.EditorApplication.delayCall += () => { if (_meshFilter != null) _meshFilter.sharedMesh = _mesh; };
             }
+
+            if (_material != null)
+                _material.color = color;
         }
 #endif
 
@@ -116,7 +120,7 @@ namespace Cloth2D
             _meshFilter = GetComponent<MeshFilter>();
             _material = GetComponent<MeshRenderer>().sharedMaterial;
 #if UNITY_EDITOR
-            if (isOnValidate)
+            if (isOnValidate && _material != null)
             {
                 _material = new Material(_material);
                 GetComponent<MeshRenderer>().material = _material;
@@ -127,6 +131,7 @@ namespace Cloth2D
                 return;
 
             _material.mainTexture = sprite.texture;
+            _material.color = color;
 
             _mesh = new Mesh();
             _mesh.name = "ChainClothMesh";

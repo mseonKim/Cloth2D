@@ -6,6 +6,7 @@ namespace Cloth2D.EditorUtility
     public struct Cloth2DChainSettings
     {
         public bool isCopied;
+        public Color color;
         public bool useFixedUpdate;
         public float anchorOffset;
         public int chainPoints;
@@ -21,6 +22,7 @@ namespace Cloth2D.EditorUtility
     {
         public static Cloth2DChainSettings copiedSettings;
         SerializedProperty sprite;
+        SerializedProperty color;
         SerializedProperty useFixedUpdate;
         SerializedProperty anchorOffset;
         SerializedProperty chainPoints;
@@ -33,6 +35,7 @@ namespace Cloth2D.EditorUtility
         void OnEnable()
         {
             sprite = serializedObject.FindProperty("sprite");
+            color = serializedObject.FindProperty("color");
             useFixedUpdate = serializedObject.FindProperty("useFixedUpdate");
             anchorOffset = serializedObject.FindProperty("anchorOffset");
             chainPoints = serializedObject.FindProperty("chainPoints");
@@ -47,6 +50,7 @@ namespace Cloth2D.EditorUtility
             serializedObject.Update();
 
             EditorGUILayout.PropertyField(sprite);
+            EditorGUILayout.PropertyField(color);
             EditorGUILayout.PropertyField(useFixedUpdate);
             EditorGUILayout.PropertyField(anchorOffset);
             EditorGUILayout.PropertyField(chainPoints);
@@ -83,6 +87,7 @@ namespace Cloth2D.EditorUtility
         private void CopySettings()
         {
             copiedSettings.isCopied = true;
+            copiedSettings.color = color.colorValue;
             copiedSettings.useFixedUpdate = useFixedUpdate.boolValue;
             copiedSettings.anchorOffset = anchorOffset.floatValue;
             copiedSettings.chainPoints = chainPoints.intValue;
@@ -94,6 +99,7 @@ namespace Cloth2D.EditorUtility
 
         private void PasteSettings()
         {
+            color.colorValue = copiedSettings.color;
             useFixedUpdate.boolValue = copiedSettings.useFixedUpdate;
             anchorOffset.floatValue = copiedSettings.anchorOffset;
             chainPoints.intValue = copiedSettings.chainPoints;

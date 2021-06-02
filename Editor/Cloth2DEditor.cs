@@ -6,6 +6,7 @@ namespace Cloth2D.EditorUtility
     public struct Cloth2DSettings
     {
         public bool isCopied;
+        public Color color;
         public bool flipTexture;
         public bool useFixedUpdate;
         public int resolution;
@@ -24,6 +25,7 @@ namespace Cloth2D.EditorUtility
     {
         public static Cloth2DSettings copiedSettings;
         SerializedProperty sprite;
+        SerializedProperty color;
         SerializedProperty flipTexture;
         SerializedProperty useFixedUpdate;
         SerializedProperty resolution;
@@ -40,6 +42,7 @@ namespace Cloth2D.EditorUtility
         void OnEnable()
         {
             sprite = serializedObject.FindProperty("sprite");
+            color = serializedObject.FindProperty("color");
             flipTexture = serializedObject.FindProperty("flipTexture");
             useFixedUpdate = serializedObject.FindProperty("useFixedUpdate");
             resolution = serializedObject.FindProperty("resolution");
@@ -57,6 +60,7 @@ namespace Cloth2D.EditorUtility
             serializedObject.Update();
 
             EditorGUILayout.PropertyField(sprite);
+            EditorGUILayout.PropertyField(color);
             EditorGUILayout.PropertyField(mode);
             EditorGUILayout.PropertyField(useFixedUpdate);
             EditorGUILayout.PropertyField(resolution);
@@ -77,8 +81,12 @@ namespace Cloth2D.EditorUtility
 
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Add Rigidbody"))
+            {
+                AddRigidbody();
+            }
             GUIContent copyButtonContent = new GUIContent("Copy", "Copy all settings except sprite.");
-            if (Selection.objects.Length > 1)
+            if (Selection.gameObjects.Length > 1)
             {
                 GUI.enabled = false;
                 copyButtonContent.tooltip = "Can't copy multiple settings.";
@@ -103,6 +111,7 @@ namespace Cloth2D.EditorUtility
         private void CopySettings()
         {
             copiedSettings.isCopied = true;
+            copiedSettings.color = color.colorValue;
             copiedSettings.flipTexture = flipTexture.boolValue;
             copiedSettings.useFixedUpdate = useFixedUpdate.boolValue;
             copiedSettings.resolution = resolution.intValue;
@@ -117,6 +126,7 @@ namespace Cloth2D.EditorUtility
 
         private void PasteSettings()
         {
+            color.colorValue = copiedSettings.color;
             flipTexture.boolValue = copiedSettings.flipTexture;
             useFixedUpdate.boolValue = copiedSettings.useFixedUpdate;
             resolution.intValue = copiedSettings.resolution;
@@ -127,6 +137,19 @@ namespace Cloth2D.EditorUtility
             drySpeed.floatValue = copiedSettings.drySpeed;
             mode.enumValueIndex = copiedSettings.mode;
             collisionResponse.floatValue = copiedSettings.collisionResponse;
+        }
+
+        private void AddRigidbody()
+        {
+            foreach (var selectedObject in Selection.gameObjects)
+            {
+                selectedObject.GetComponent<Cloth2D>().useFixedUpdate = true;
+                Rigidbody2D rigidbody = selectedObject.AddComponent<Rigidbody2D>();
+                rigidbody.angularDrag = 0f;
+                rigidbody.gravityScale = 0f;
+                rigidbody.constraints = RigidbodyConstraints2D.FreezeAll;
+                Undo.RegisterCreatedObjectUndo(rigidbody, "Create rigidbody " + rigidbody.name);
+            }
         }
     }
 }
