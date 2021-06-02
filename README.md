@@ -16,7 +16,7 @@ The collision only supports kinematic or dynamic rigidbody by default.
 > Otherwise, the cloth can't know whether the kinematic object has moved or not.
 
 <br>
-If you want to allow a cloth detects [another cloth, static rigidbody, pure collider], Add dynamic rigidbody manually to the cloth.
+If you want to allow a cloth detects [another cloth, static rigidbody, pure collider(not trigger)], Add dynamic rigidbody manually to the cloth.
 In this case, make sure if you locked positionXY and rotationZ and the gravity scale as 0.
 <br>
 

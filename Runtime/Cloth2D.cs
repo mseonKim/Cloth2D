@@ -658,6 +658,9 @@ namespace Cloth2D
                 return;
             }
 
+            if (collider.isTrigger)
+                return;
+
             /**
              *  <Step>
              *  1.  Check rigidbody's velocity.
