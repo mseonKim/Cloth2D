@@ -8,6 +8,8 @@ namespace Cloth2D
     {
         public Sprite sprite;
         public Color color = Color.white;
+        [Tooltip("The last anchor index. If point's index <= lastAnchor, the position is fixed.")]
+        [Min(0)] public int lastAnchor = 0;
         [Tooltip("Use FixedUpdate instead of Update")]
         public bool useFixedUpdate = false;
         [Tooltip("How far the first anchor is from transform position. 0.5 means the center.")]
@@ -18,8 +20,6 @@ namespace Cloth2D
         [Range(0.1f, 10f)] public float mass = 1f;
         [Tooltip("How much velocity is added when snapping back to the correct length.")]
         [Range(0f, 6f)] public float elasticResponse = 0f;
-        [Tooltip("The last anchor index. If point's index <= lastAnchor, the position is fixed.")]
-        [Min(0)] public int lastAnchor = 0;
 
         private Transform _transform;
         private MeshFilter _meshFilter;

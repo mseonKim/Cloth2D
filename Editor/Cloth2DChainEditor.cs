@@ -36,13 +36,13 @@ namespace Cloth2D.EditorUtility
         {
             sprite = serializedObject.FindProperty("sprite");
             color = serializedObject.FindProperty("color");
+            lastAnchor = serializedObject.FindProperty("lastAnchor");
             useFixedUpdate = serializedObject.FindProperty("useFixedUpdate");
             anchorOffset = serializedObject.FindProperty("anchorOffset");
             chainPoints = serializedObject.FindProperty("chainPoints");
             gravity = serializedObject.FindProperty("gravity");
             mass = serializedObject.FindProperty("mass");
             elasticResponse = serializedObject.FindProperty("elasticResponse");
-            lastAnchor = serializedObject.FindProperty("lastAnchor");
         }
 
         public override void OnInspectorGUI()
@@ -51,13 +51,13 @@ namespace Cloth2D.EditorUtility
 
             EditorGUILayout.PropertyField(sprite);
             EditorGUILayout.PropertyField(color);
+            EditorGUILayout.PropertyField(lastAnchor);
             EditorGUILayout.PropertyField(useFixedUpdate);
             EditorGUILayout.PropertyField(anchorOffset);
             EditorGUILayout.PropertyField(chainPoints);
             EditorGUILayout.PropertyField(gravity);
             EditorGUILayout.PropertyField(mass);
             EditorGUILayout.PropertyField(elasticResponse);
-            EditorGUILayout.PropertyField(lastAnchor);
 
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
