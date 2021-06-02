@@ -7,7 +7,7 @@ This package contains 2D Cloth and 2D Wind to support multiple clothes with wind
 See WebGL Demo here: [Link](http://13.124.212.66/game "Demo link")
 
 ## Cloth2D
-![image](https://user-images.githubusercontent.com/12474900/118684370-1e8cec80-b83d-11eb-8826-75f085867fde.png)
+![image](https://user-images.githubusercontent.com/12474900/120443284-70974b80-c3c1-11eb-892a-811e23c35cca.png)
 <br>
 Support multiple clothes. Consider which resolution is the best option for your game performance.
 The collision only supports kinematic or dynamic rigidbody by default.
@@ -36,7 +36,7 @@ Note that the wind affects a cloth if the cloth's world transform position is in
 
 
 ## Cloth2DChain
-![image](https://user-images.githubusercontent.com/12474900/120292669-77f62080-c2ff-11eb-9678-9cbe3c273995.png)
+![image](https://user-images.githubusercontent.com/12474900/120443490-a63c3480-c3c1-11eb-81e8-92f84b0c499d.png)
 <br>
 Simple version of cloth2D, which is specialized for 2d chain stuff. It also supports multiple chain clothes.
 Note that it doesn't support rotation and collision.
