@@ -7,7 +7,7 @@ This package contains 2D Cloth and 2D Wind to support multiple clothes with wind
 See WebGL Demo here: [Link](http://13.124.212.66/game "Demo link")
 
 ## Cloth2D
-![image](https://user-images.githubusercontent.com/12474900/120444151-527e1b00-c3c2-11eb-8d80-5e3a2bb54775.png)
+![image](https://user-images.githubusercontent.com/12474900/120444557-b1439480-c3c2-11eb-8ac0-7bb1a11bb891.png)
 <br>
 Support multiple clothes. Consider which resolution is the best option for your game performance.
 The collision only supports kinematic or dynamic rigidbody by default.
