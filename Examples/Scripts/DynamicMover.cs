@@ -51,7 +51,7 @@ public class DynamicMover : MonoBehaviour
             delta = Input.mousePosition - _preMousePos;
             _isSelected = false;
             _rigidbody.isKinematic = false;
-            _rigidbody.AddForce(delta.normalized * moveOffset);
+            _rigidbody.AddForce(delta * moveOffset);
         }
     }
 }
