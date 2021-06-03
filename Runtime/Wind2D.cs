@@ -56,7 +56,7 @@ namespace Cloth2D
         public float GetTurbulence(Vector3 pos)
         {
             if (infiniteDistance)
-                return _wind;
+                return _turbulence;
 
             pos.z = transform.position.z;
             float dist = (transform.position - pos).magnitude;

@@ -473,8 +473,8 @@ namespace Cloth2D
                 Vector3 windForce = Mathf.Pow(wind / (mass + wet), 1.5f) * wind2d.windDriection * 10f;
                 _vertices[i].f.x += windForce.x * _segmentWidth;
                 _vertices[i].f.y += windForce.y * _segmentHeight;
-                _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, _seed) - 0.5f) / (1f + wet) * turbulence * _segmentWidth * 10f;
-                _vertices[i].f.y += (Mathf.PerlinNoise(_seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * turbulence * _segmentHeight * 10f;
+                _vertices[i].f.x += (Mathf.PerlinNoise(Time.time + i * _segmentWidth * 0.3f, _seed) - 0.5f) / (1f + wet) * turbulence * _segmentWidth * 50f;
+                _vertices[i].f.y += (Mathf.PerlinNoise(_seed, Time.time + i * _segmentHeight * 0.3f) - 0.5f) / (1f + wet) * turbulence * _segmentHeight * 50f;
                 
                 if (wetness > 0f)
                 {
