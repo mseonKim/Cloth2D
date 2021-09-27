@@ -4,7 +4,7 @@
 The 2D cloth system for Unity. Use _"2D Object -> 2D Cloth"_ to create new cloth2D gameobject and _"2D Wind"_ for new wind gameobject.
 This package contains 2D Cloth and 2D Wind to support multiple clothes with wind system.
 
-See WebGL Demo here: [Link](http://13.124.212.66/game "Demo link")
+See WebGL Demo here: [Link](http://13.124.212.66/cloth2d "Demo link")
 
 ## Cloth2D
 ![image](https://user-images.githubusercontent.com/12474900/120444557-b1439480-c3c2-11eb-8ac0-7bb1a11bb891.png)
